@@ -81,7 +81,7 @@ class MessageController extends Controller
                     ...$meta,
                 ];
             })
-            // Existing conversations stay at the top; untouched contacts are alphabetical.
+
             ->sort(function (array $left, array $right) {
                 $leftDate = $left['last_message']['created_at'] ?? null;
                 $rightDate = $right['last_message']['created_at'] ?? null;
@@ -112,7 +112,7 @@ class MessageController extends Controller
         if ($selectedContact) {
             $selectedContactId = $selectedContact['id'];
 
-            // Cap the initial payload while retaining the most recent chat history.
+
             $messages = Message::query()
                 ->with('attachments')
                 ->where(function ($query) use ($currentUser, $selectedContactId) {
@@ -128,7 +128,7 @@ class MessageController extends Controller
                 ->get()
                 ->reverse()
                 ->values()
-                ->map(fn (Message $message) => [
+                ->map(fn(Message $message) => [
                     'id' => $message->id,
                     'sender_id' => $message->sender_id,
                     'recipient_id' => $message->recipient_id,
@@ -136,7 +136,7 @@ class MessageController extends Controller
                     'read_at' => $message->read_at?->toIso8601String(),
                     'created_at' => $message->created_at->toIso8601String(),
                     'attachments' => $message->attachments->map(
-                        fn (MessageAttachment $attachment) => [
+                        fn(MessageAttachment $attachment) => [
                             'id' => $attachment->id,
                             'name' => $attachment->original_name,
                             'mime_type' => $attachment->mime_type,
@@ -174,9 +174,9 @@ class MessageController extends Controller
         $recipientIds = collect($validated['recipient_ids'] ?? [])
             ->when(
                 isset($validated['recipient_id']),
-                fn ($recipients) => $recipients->push($validated['recipient_id']),
+                fn($recipients) => $recipients->push($validated['recipient_id']),
             )
-            ->map(fn ($recipientId) => (int) $recipientId)
+            ->map(fn($recipientId) => (int) $recipientId)
             ->unique()
             ->values();
 
@@ -184,8 +184,6 @@ class MessageController extends Controller
             DB::transaction(function () use ($request, $validated, $recipientIds, &$storedPaths) {
                 $recipientNames = [];
 
-                // Multi-recipient compose creates private copies so recipients
-                // cannot see one another or access another thread's attachments.
                 foreach ($recipientIds as $recipientId) {
                     $recipient = User::query()->findOrFail($recipientId);
                     $recipientNames[] = $recipient->name;
@@ -199,11 +197,11 @@ class MessageController extends Controller
                         $storedName = (string) Str::uuid();
 
                         if ($extension) {
-                            $storedName .= '.'.$extension;
+                            $storedName .= '.' . $extension;
                         }
 
                         $path = $file->storeAs(
-                            'message-attachments/'.$message->id,
+                            'message-attachments/' . $message->id,
                             $storedName,
                             'local',
                         );
@@ -236,7 +234,7 @@ class MessageController extends Controller
                     'message.sent',
                     $recipientCount === 1 ? 'Sent a message' : 'Sent a group message',
                     $recipientCount === 1
-                        ? 'Message sent to '.$recipientNames[0].'.'
+                        ? 'Message sent to ' . $recipientNames[0] . '.'
                         : "Message sent privately to {$recipientCount} recipients.",
                     [
                         'recipient_count' => $recipientCount,
@@ -304,7 +302,6 @@ class MessageController extends Controller
     {
         abort_if($contact->is($request->user()), 422, 'A user cannot be their own contact.');
 
-        // Only messages addressed to the signed-in user can be marked as read.
         $request->user()->receivedMessages()
             ->where('sender_id', $contact->id)
             ->whereNull('read_at')
