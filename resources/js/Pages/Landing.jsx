@@ -1,365 +1,314 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Head } from "@inertiajs/react";
-import { useReveal } from "@/hooks/useReveal";
-import { useScrollSpy } from "@/hooks/useScrollSpy";
-import LoginModal from "@/Components/modal/LoginModal";
-import { workflowSteps } from "@/data/workflowSteps.jsx";
+// resources/js/Pages/Landing.jsx
+import { useState, useEffect, useRef } from 'react';
+import { Head } from '@inertiajs/react';
+import {
+  Box, Typography, Button, IconButton, Container, AppBar, Toolbar,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
+import Crop169OutlinedIcon from '@mui/icons-material/Crop169Outlined';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
+import FacebookIcon from '@mui/icons-material/Facebook';
+import InstagramIcon from '@mui/icons-material/Instagram';
+import YouTubeIcon from '@mui/icons-material/YouTube';
 
-const SLIDES = [
-    "/img/slideshow_img/slideshow_1.jpg",
-    "/img/slideshow_img/slideshow_2.jpg",
-    "/img/slideshow_img/slideshow_3.jpg",
-    "/img/slideshow_img/slideshow_4.jpg",
-    "/img/slideshow_img/slideshow_5.jpg",
+import HeroSlideshow from '@/Components/HeroSlideshow';
+import LoginModal from '@/Components/LoginModal';
+
+const SLIDES = [1, 2, 3, 4, 5].map((n) => ({
+  src: `/img/slideshow_img/slideshow_${n}.jpg`,
+  alt: `Slide ${n}`,
+}));
+
+const ABOUT_PHOTOS = [
+  { src: '/img/about_img/1.jpg', alt: 'Healthcare workers', mt: 30 },
+  { src: '/img/about_img/2.jpg', alt: 'Patient consultation', mt: 10 },
+  { src: '/img/about_img/3.jpg', alt: 'Community screening', mt: 10 },
+  { src: '/img/about_img/4.jpg', alt: 'Medical check', mt: -10 },
 ];
-const INTERVAL = 5000;
 
-function ProgressBar({ paused, duration }) {
-    const ref = useRef(null);
-    useEffect(() => {
-        if (paused || !ref.current) return;
-        ref.current.style.transition = "none";
-        ref.current.style.width = "0%";
-        ref.current.getBoundingClientRect();
-        ref.current.style.transition = `width ${duration}ms linear`;
-        ref.current.style.width = "100%";
-    }, [paused, duration]);
-    return (
-        <div
-            ref={ref}
-            style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                height: "3px",
-                background: "#d94f4f",
-                width: "0%",
-                zIndex: 3,
-            }}
-        />
+const WORKFLOW_STEPS = [
+  { icon: SearchIcon, title: 'Community Screening', desc: 'Teams conduct door-to-door or community-based screenings.' },
+  { icon: DescriptionOutlinedIcon, title: 'Patient Registration', desc: 'Digital registration of all screened individuals.' },
+  { icon: ReportProblemOutlinedIcon, title: 'Suspicious Case Flagging', desc: 'Automated flagging of presumptive TB cases for follow-up.' },
+  { icon: Crop169OutlinedIcon, title: 'Diagnostic Assessment', desc: 'RHU staff perform X-ray, Sputum, and GeneXpert tests.' },
+  { icon: CheckCircleOutlineIcon, title: 'TB Confirmation', desc: 'Physician evaluation and final diagnostic confirmation.' },
+  { icon: CalendarMonthOutlinedIcon, title: 'Treatment Monitoring', desc: 'Six-month structured medication and follow-up tracking.' },
+  { icon: BarChartOutlinedIcon, title: 'Program Monitoring', desc: 'ICM coordinators track performance across municipalities.' },
+];
+
+const NAV_LINKS = [
+  { href: '#about', label: 'About CareLink' },
+  { href: '#workflow', label: 'CareLink Workflow' },
+];
+
+/** Fades/slides an element in the first time it enters the viewport. */
+function useReveal() {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    if (!('IntersectionObserver' in window)) {
+      setVisible(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.12 }
     );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, visible];
+}
+
+function Reveal({ delay = 0, className = '', children, ...props }) {
+  const [ref, visible] = useReveal();
+  return (
+    <Box
+      ref={ref}
+      className={className}
+      sx={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(36px)',
+        transition: `opacity .65s ease ${delay}s, transform .65s cubic-bezier(.22,.68,0,1.2) ${delay}s`,
+      }}
+      {...props}
+    >
+      {children}
+    </Box>
+  );
 }
 
 export default function Landing() {
-    const [loginOpen, setLoginOpen] = useState(false);
-    const { activeSection, scrolled } = useScrollSpy(["about", "workflow"]);
-    useReveal();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState('');
 
-    /* ── Slideshow state ── */
-    const [current, setCurrent] = useState(0);
-    const [progKey, setProgKey] = useState(0);
-    const [paused, setPaused] = useState(false);
-    const timerRef = useRef(null);
-    const heroRef = useRef(null);
-    const slideshowRef = useRef(null);
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 40);
 
-    const goTo = useCallback((indexOrFn) => {
-        setCurrent((prev) => {
-            const next =
-                typeof indexOrFn === "function" ? indexOrFn(prev) : indexOrFn;
-            return ((next % SLIDES.length) + SLIDES.length) % SLIDES.length;
-        });
-        setProgKey((k) => k + 1);
-    }, []);
+      let current = '';
+      NAV_LINKS.forEach(({ href }) => {
+        const el = document.querySelector(href);
+        if (el && el.getBoundingClientRect().top <= 120) current = href;
+      });
+      setActiveSection(current);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
-    const resetTimer = useCallback(() => {
-        clearInterval(timerRef.current);
-        timerRef.current = setInterval(() => goTo((c) => c + 1), INTERVAL);
-    }, [goTo]);
+  function scrollToSection(e, href) {
+    e.preventDefault();
+    document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
-    useEffect(() => {
-        resetTimer();
-        return () => clearInterval(timerRef.current);
-    }, [resetTimer]);
+  return (
+    <>
+      <Head title="CareLink TB" />
 
-    useEffect(() => {
-        const onScroll = () => {
-            if (!heroRef.current || !slideshowRef.current) return;
-            const scrolledY = window.scrollY;
-            if (scrolledY > heroRef.current.offsetHeight) return;
-            slideshowRef.current.style.transform = `translateY(${(scrolledY * 0.3).toFixed(1)}px)`;
-        };
-        window.addEventListener("scroll", onScroll, { passive: true });
-        return () => window.removeEventListener("scroll", onScroll);
-    }, []);
-
-    const handleGoTo = (index) => {
-        goTo(index);
-        resetTimer();
-    };
-
-    const scrollTo = (id) => (e) => {
-        e.preventDefault();
-        document
-            .getElementById(id)
-            ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-
-    return (
-        <>
-            <Head title="CareLink TB" />
-
-            {/* ═══════════════ NAVBAR ═══════════════ */}
-            <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
-                <a href="#" className="nav-logo">
-                    <div className="nav-logo-icon">
-                        <img
-                            src="/img/logo_img/icm_logo_transparent.png"
-                            alt="CareLink TB Logo"
-                            className="nav-logo-img"
-                        />
-                    </div>
-                    CareLink TB
-                </a>
-
-                <div className="nav-links-group">
-                    <a
-                        href="#about"
-                        onClick={scrollTo("about")}
-                        className={`nav-link ${activeSection === "about" ? "active" : ""}`}
-                    >
-                        About CareLink
-                    </a>
-
-                    <a
-                        href="#workflow"
-                        onClick={scrollTo("workflow")}
-                        className={`nav-link ${activeSection === "workflow" ? "active" : ""}`}
-                    >
-                        CareLink Workflow
-                    </a>
-                    <button
-                        className="btn-login"
-                        onClick={() => setLoginOpen(true)}
-                    >
-                        Log in
-                    </button>
-                </div>
-            </nav>
-
-            {/* ═══════════════ HERO ═══════════════ */}
-            <section
-                ref={heroRef}
-                className="hero-section"
-                onMouseEnter={() => {
-                    setPaused(true);
-                    clearInterval(timerRef.current);
-                }}
-                onMouseLeave={() => {
-                    setPaused(false);
-                    resetTimer();
-                    setProgKey((k) => k + 1);
-                }}
+      {/* ── NAVBAR ── */}
+      <AppBar
+        position="sticky"
+        elevation={0}
+        color="inherit"
+        sx={{
+          bgcolor: scrolled ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid #eee',
+          boxShadow: scrolled ? '0 2px 20px rgba(0,0,0,0.09)' : 'none',
+          transition: 'background .3s, box-shadow .3s',
+        }}
+      >
+        <Toolbar className="flex items-center justify-between px-6 md:px-12" sx={{ minHeight: 64 }}>
+          <Box className="flex items-center gap-2.5" sx={{ fontWeight: 700 }}>
+            <Box
+              className="flex items-center justify-center"
+              sx={{ width: 34, height: 34, bgcolor: 'primary.main', borderRadius: '8px' }}
             >
-                <div ref={slideshowRef} className="slideshow-wrap">
-                    {SLIDES.map((src, i) => (
-                        <div
-                            key={i}
-                            className={`slide ${i === current ? "active" : ""}`}
-                        >
-                            <img src={src} alt={`Slide ${i + 1}`} />
-                        </div>
-                    ))}
-                </div>
-
-                <button
-                    className="slide-arrow prev"
-                    onClick={() => handleGoTo(current - 1)}
-                    aria-label="Previous slide"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                </button>
-                <button
-                    className="slide-arrow next"
-                    onClick={() => handleGoTo(current + 1)}
-                    aria-label="Next slide"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                </button>
-
-                <ProgressBar
-                    key={progKey}
-                    paused={paused}
-                    duration={INTERVAL}
+              <svg viewBox="0 0 36 36" width="20" height="20" fill="none">
+                <polyline
+                  points="2,18 8,18 12,8 16,26 20,14 24,22 28,18 34,18"
+                  stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                 />
+              </svg>
+            </Box>
+            <Typography component="span" fontWeight={700}>CareLink TB</Typography>
+          </Box>
 
-                <div className="slide-dots">
-                    {SLIDES.map((_, i) => (
-                        <button
-                            key={i}
-                            className={`slide-dot ${i === current ? "active" : ""}`}
-                            onClick={() => handleGoTo(i)}
-                            aria-label={`Go to slide ${i + 1}`}
-                        />
-                    ))}
-                </div>
+          <Box className="hidden sm:flex items-center gap-8">
+            {NAV_LINKS.map((link) => (
+              <Typography
+                key={link.href}
+                component="a"
+                href={link.href}
+                onClick={(e) => scrollToSection(e, link.href)}
+                variant="body2"
+                sx={{
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: activeSection === link.href ? 'primary.main' : 'text.secondary',
+                  '&:hover': { color: 'text.primary' },
+                }}
+              >
+                {link.label}
+              </Typography>
+            ))}
+            <Button variant="contained" onClick={() => setLoginOpen(true)}>
+              Log in
+            </Button>
+          </Box>
+        </Toolbar>
+      </AppBar>
 
-                <div className="hero-content">
-                    <p className="hero-eyebrow">
-                        Connecting People. Supporting Care. Saving Lives.
-                    </p>
-                    <h1 className="hero-h1">CareLink TB</h1>
-                    <div className="hero-divider" />
-                    <p className="hero-desc">
-                        A centralized digital platform designed to support
-                        tuberculosis screening, diagnostic follow-ups, and
-                        six-month treatment monitoring for communities served by
-                        International Care Ministries, Rural Health Units, and
-                        partner X-ray service provider.
-                    </p>
-                </div>
-            </section>
+      {/* ── HERO ── */}
+      <HeroSlideshow
+        slides={SLIDES}
+        eyebrow="Connecting People. Supporting Care. Saving Lives."
+        title="CareLink TB"
+        description="A centralized digital platform designed to support tuberculosis screening, diagnostic follow-ups, and six-month treatment monitoring for communities served by International Care Ministries, Rural Health Units, and partner X-ray service provider."
+      />
 
-            {/* ═══════════════ ABOUT ═══════════════ */}
-            <section id="about" className="about-section">
-                <div className="reveal">
-                    <h2 className="about-h2">About CareLink</h2>
-                    <p className="about-p">
-                        CareLink TB helps organize the entire TB management
-                        process, ensuring no patient falls through the cracks.
-                        By digitizing the workflow from community screening to
-                        treatment completion, we improve the efficiency and
-                        accuracy of the Active Case Finding program.
-                    </p>
-                    <ul className="about-features">
-                        <li>Centralized patient registration</li>
-                        <li>Real-time flagging of suspicious cases</li>
-                        <li>Digital diagnostic assessment</li>
-                        <li>Tracking patient treatment progress</li>
-                    </ul>
-                </div>
+      {/* ── ABOUT ── */}
+      <Box
+        component="section"
+        id="about"
+        className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 px-6 md:px-16"
+        sx={{ bgcolor: 'primary.main', py: { xs: 7, md: 10 } }}
+      >
+        <Reveal>
+          <Typography variant="h2" sx={{ color: 'white', fontSize: '2.4rem', mb: 2.5 }}>
+            About CareLink
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontSize: '.97rem', mb: 3.5 }}>
+            CareLink TB helps organize the entire TB management process, ensuring no patient falls through
+            the cracks. By digitizing the workflow from community screening to treatment completion, we
+            improve the efficiency and accuracy of the Active Case Finding program.
+          </Typography>
+          <Box component="ul" className="flex flex-col gap-3.5" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+            {[
+              'Centralized patient registration',
+              'Real-time flagging of suspicious cases',
+              'Digital diagnostic assessment',
+              'Tracking patient treatment progress',
+            ].map((item) => (
+              <Box component="li" key={item} className="flex items-center gap-3">
+                <CheckCircleOutlineIcon sx={{ color: 'white', fontSize: 20 }} />
+                <Typography sx={{ color: 'white', fontWeight: 500, fontSize: '.95rem' }}>{item}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Reveal>
 
-                <div className="about-photos-grid reveal reveal-delay-2">
-                    {[
-                        {
-                            src: "/img/about_img/1.jpg",
-                            alt: "Healthcare workers",
-                        },
-                        {
-                            src: "/img/about_img/2.jpg",
-                            alt: "Patient consultation",
-                        },
-                        {
-                            src: "/img/about_img/3.jpg",
-                            alt: "Community screening",
-                        },
-                        { src: "/img/about_img/4.jpg", alt: "Medical check" },
-                    ].map((p, i) => (
-                        <div key={i} className="photo-wrap">
-                            <img src={p.src} alt={p.alt} />
-                        </div>
-                    ))}
-                </div>
-            </section>
+        <Reveal delay={0.2} className="grid grid-cols-2 gap-4">
+          {ABOUT_PHOTOS.map((photo) => (
+            <Box
+              key={photo.src}
+              className="rounded-2xl overflow-hidden"
+              sx={{ mt: `${photo.mt}px`, transition: 'box-shadow .3s ease', '&:hover': { boxShadow: '0 12px 32px rgba(0,0,0,.22)' } }}
+            >
+              <Box
+                component="img"
+                src={photo.src}
+                alt={photo.alt}
+                className="w-full block"
+                sx={{ aspectRatio: '4/3', objectFit: 'cover', filter: 'brightness(.88)', transition: 'transform .5s ease, filter .35s ease', '&:hover': { transform: 'scale(1.07)', filter: 'brightness(1.02)' } }}
+              />
+            </Box>
+          ))}
+        </Reveal>
+      </Box>
 
-            {/* ═══════════════ WORKFLOW ═══════════════ */}
-            <section id="workflow" className="workflow-section">
-                <div className="reveal">
-                    <h2 className="workflow-h2">CareLink Workflow</h2>
-                </div>
-                <p className="workflow-sub reveal reveal-delay-1">
-                    Our end-to-end digital solution tracks every step of the TB
-                    management process.
-                </p>
-                <div className="steps-grid reveal reveal-delay-2">
-                    {workflowSteps.map((s) => (
-                        <div key={s.num} className="step">
-                            <div className="step-num">{s.num}</div>
-                            <div className="step-icon">
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.8"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    {s.icon}
-                                </svg>
-                            </div>
-                            <h4>{s.title}</h4>
-                            <p>{s.desc}</p>
-                        </div>
-                    ))}
-                </div>
-            </section>
+      {/* ── WORKFLOW ── */}
+      <Box component="section" id="workflow" sx={{ py: { xs: 7, md: 11 }, px: { xs: 3, md: 8 } }}>
+        <Reveal className="text-center">
+          <Typography variant="h2" sx={{ fontSize: '2.4rem' }}>CareLink Workflow</Typography>
+        </Reveal>
+        <Reveal delay={0.1} className="text-center">
+          <Typography color="text.secondary" sx={{ mb: 7, fontSize: '.97rem' }}>
+            Our end-to-end digital solution tracks every step of the TB management process.
+          </Typography>
+        </Reveal>
 
-            {/* ═══════════════ FOOTER ═══════════════ */}
-            <footer className="footer-bar">
-                <span className="footer-copy">© 2026 CareLink TB</span>
-                <div className="footer-socials">
-                    <a
-                        href="https://www.facebook.com/internationalcareministries"
-                        aria-label="Facebook"
-                        className="footer-social"
-                    >
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-                        </svg>
-                    </a>
-                    <a
-                        href="https://www.instagram.com/intlcareministries"
-                        aria-label="Instagram"
-                        className="footer-social"
-                    >
-                        <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <rect x="2" y="2" width="20" height="20" rx="5" />
-                            <circle cx="12" cy="12" r="4" />
-                            <circle
-                                cx="17.5"
-                                cy="6.5"
-                                r="1"
-                                fill="currentColor"
-                                stroke="none"
-                            />
-                        </svg>
-                    </a>
-                    <a
-                        href="https://www.youtube.com/@InternationalCareMinistries"
-                        aria-label="YouTube"
-                        className="footer-social"
-                    >
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.96-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
-                            <polygon
-                                points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"
-                                fill="white"
-                            />
-                        </svg>
-                    </a>
-                </div>
-            </footer>
+        <Reveal delay={0.2} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {WORKFLOW_STEPS.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <Box
+                key={step.title}
+                className="flex flex-col items-center text-center gap-2.5 p-4"
+                sx={{
+                  borderRadius: '14px',
+                  cursor: 'default',
+                  transition: 'background .2s, transform .2s, box-shadow .2s',
+                  '&:hover': { bgcolor: 'grey.100', transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,.07)' },
+                }}
+              >
+                <Box
+                  className="flex items-center justify-center"
+                  sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: 'primary.main', color: 'white', fontSize: '.75rem', fontWeight: 700 }}
+                >
+                  {i + 1}
+                </Box>
+                <Box
+                  className="flex items-center justify-center"
+                  sx={{ width: 60, height: 60, borderRadius: '50%', border: '1.5px solid #e8e8e8', bgcolor: 'white', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}
+                >
+                  <Icon sx={{ color: 'primary.main', fontSize: 26 }} />
+                </Box>
+                <Typography variant="body2" fontWeight={600}>{step.title}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                  {step.desc}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Reveal>
+      </Box>
 
-            {/* ═══════════════ LOGIN MODAL ═══════════════ */}
-            <LoginModal
-                isOpen={loginOpen}
-                onClose={() => setLoginOpen(false)}
-            />
-        </>
-    );
+      {/* ── FOOTER ── */}
+      <Box
+        component="footer"
+        className="flex items-center justify-between px-6 md:px-16"
+        sx={{ bgcolor: 'text.primary', py: 3.5 }}
+      >
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+          © 2026 CareLink TB
+        </Typography>
+        <Box className="flex gap-3">
+          {[FacebookIcon, InstagramIcon, YouTubeIcon].map((Icon, i) => (
+            <IconButton
+              key={i}
+              aria-label="social link"
+              sx={{
+                width: 42, height: 42,
+                border: '1.5px solid rgba(255,255,255,0.25)',
+                color: 'rgba(255,255,255,0.7)',
+                '&:hover': { borderColor: 'primary.main', color: 'primary.main', bgcolor: 'rgba(217,79,79,.1)' },
+              }}
+            >
+              <Icon fontSize="small" />
+            </IconButton>
+          ))}
+        </Box>
+      </Box>
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+    </>
+  );
 }

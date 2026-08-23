@@ -6,6 +6,7 @@ import {
     FaChartLine,
     FaClipboardList,
     FaUsersGear,
+    FaBoxArchive,
 } from "react-icons/fa6";
 
 export const navConfig = {
@@ -32,7 +33,12 @@ export const navConfig = {
                 route: "icm.accounts.index",
                 Icon: FaUsersGear,
             },
-            { label: "Forms", route: "icm.forms", Icon: FaFileLines },
+            { label: "Records", route: "icm.records.index", Icon: FaFileLines },
+            {
+                label: "Archives",
+                route: "icm.archives.index",
+                Icon: FaBoxArchive,
+            },
             { label: "Inbox", route: "icm.inbox", Icon: FaEnvelope },
             {
                 label: "Recent Activity",
@@ -83,11 +89,10 @@ export const navConfig = {
                 Icon: FaTableCellsLarge,
             },
             {
-                label: "Referrals",
-                route: "provider.referrals",
+                label: "Program",
+                route: "provider.programs.index",
                 Icon: FaBookOpen,
             },
-            { label: "Forms", route: "provider.forms", Icon: FaFileLines },
             { label: "Inbox", route: "provider.inbox", Icon: FaEnvelope },
             {
                 label: "Recent Activity",

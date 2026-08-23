@@ -31,13 +31,21 @@ export default function Index({ programs }) {
     const [status, setStatus] = useState("all");
     const [modalOpen, setModalOpen] = useState(false);
     const nameInput = useRef(null);
-    const { data, setData, post, processing, errors, clearErrors, reset } =
-        useForm({
-            name: "",
-            location: "",
-            date: "",
-            time: "",
-        });
+    const {
+        data,
+        setData,
+        post,
+        processing,
+        errors,
+        clearErrors,
+        reset,
+        transform,
+    } = useForm({
+        name: "",
+        location: "",
+        date: "",
+        time: "",
+    });
 
     const filteredPrograms = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -89,6 +97,14 @@ export default function Index({ programs }) {
     const submit = (event) => {
         event.preventDefault();
 
+        // Backend expects a single `scheduled_at` datetime; the form keeps
+        // separate date/time inputs for a friendlier UX.
+        transform(({ name, location, date, time }) => ({
+            name,
+            location,
+            scheduled_at: `${date}T${time || "00:00"}`,
+        }));
+
         post(route("icm.programs.store"), {
             preserveScroll: true,
             onSuccess: () => {
@@ -96,6 +112,12 @@ export default function Index({ programs }) {
                 setModalOpen(false);
             },
         });
+    };
+
+    const formatSchedule = (isoString) => {
+        const date = new Date(isoString);
+        if (Number.isNaN(date.getTime())) return "";
+        return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     };
 
     return (
@@ -181,7 +203,7 @@ export default function Index({ programs }) {
                                     <div className="programs-card-meta">
                                         <span>
                                             <FaCalendarDays aria-hidden="true" />
-                                            {program.date} {program.time}
+                                            {formatSchedule(program.scheduled_at)}
                                         </span>
                                         <span>
                                             <FaUser aria-hidden="true" />
@@ -354,6 +376,11 @@ export default function Index({ programs }) {
                                     )}
                                 </div>
                             </div>
+                            {errors.scheduled_at && (
+                                <small id="program-schedule-error">
+                                    {errors.scheduled_at}
+                                </small>
+                            )}
 
                             <div className="programs-modal-actions">
                                 <button

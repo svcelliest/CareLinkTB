@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\IcmAccountController;
 use App\Http\Controllers\IcmController;
+use App\Http\Controllers\IcmRecordController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -31,19 +32,29 @@ Route::middleware(['auth', 'active', 'role:icm'])->group(function () {
         ->name('icm.programs.export');
     Route::get('icm/programs/{program}', [ProgramController::class, 'show'])
         ->name('icm.programs.show');
+    Route::get('icm/records', [IcmRecordController::class, 'index'])->name('icm.records.index');
+    Route::get('icm/records/export', [IcmRecordController::class, 'export'])->name('icm.records.export');
+    Route::get('icm/records/{patient}', [IcmRecordController::class, 'show'])->name('icm.records.show');
+    Route::patch('icm/records/{patient}', [IcmRecordController::class, 'update'])->name('icm.records.update');
+    Route::get('icm/archives', fn () => Inertia::render('Icm/Archives/Index'))->name('icm.archives.index');
     Route::get('icm/inbox', [MessageController::class, 'index'])->name('icm.inbox');
     Route::get('icm/activity', [ActivityController::class, 'index'])->name('icm.activity');
 });
 
 Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
     Route::get('rhu/dashboard', [RhuController::class, 'dashboard'])->name('rhu.dashboard');
-    Route::get('rhu/programs', [ProgramController::class, 'index'])->name('rhu.programs.index');
+    Route::get('rhu/programs', [RhuController::class, 'programs'])->name('rhu.programs.index');
+    Route::get('rhu/programs/{program}', [RhuController::class, 'showProgram'])->name('rhu.programs.show');
+    Route::post('rhu/programs/{program}/forms', [RhuController::class, 'storeForm'])->name('rhu.programs.forms.store');
     Route::get('rhu/inbox', [MessageController::class, 'index'])->name('rhu.inbox');
     Route::get('rhu/activity', [ActivityController::class, 'index'])->name('rhu.activity');
 });
 
 Route::middleware(['auth', 'active', 'role:provider'])->group(function () {
     Route::get('provider/dashboard', [ProviderController::class, 'dashboard'])->name('provider.dashboard');
+    Route::get('provider/programs', [ProviderController::class, 'programs'])->name('provider.programs.index');
+    Route::get('provider/programs/{program}', [ProviderController::class, 'showProgram'])->name('provider.programs.show');
+    Route::patch('provider/programs/{program}/finish', [ProviderController::class, 'finishProgram'])->name('provider.programs.finish');
     Route::get('provider/inbox', [MessageController::class, 'index'])->name('provider.inbox');
     Route::get('provider/activity', [ActivityController::class, 'index'])->name('provider.activity');
 });

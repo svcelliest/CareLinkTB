@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProgramRequest;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
+use App\Models\Patient;
 use App\Models\Program;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +93,9 @@ class ProgramController extends Controller
             403,
         );
 
+        $patients = $program->patients()->orderBy('created_at')->get();
+        $presumptiveCount = $patients->filter(fn (Patient $patient) => $patient->isPresumptive())->count();
+
         return Inertia::render('Icm/Programs/Show', [
             'program' => [
                 'id' => $program->id,
@@ -101,6 +105,21 @@ class ProgramController extends Controller
                 'status' => $program->status,
                 'created_at' => $program->created_at->toIso8601String(),
                 'updated_at' => $program->updated_at->toIso8601String(),
+                'patient_counts' => [
+                    'total' => $patients->count(),
+                    'normal' => $patients->count() - $presumptiveCount,
+                    'presumptive' => $presumptiveCount,
+                ],
+                'patients' => $patients->values()->map(fn (Patient $patient, int $index) => [
+                    'id' => $patient->id,
+                    'number' => $index + 1,
+                    'name' => $patient->name,
+                    'age' => $patient->age,
+                    'sex' => $patient->sex,
+                    'address' => $patient->address,
+                    'contact' => $patient->contact_number,
+                    'status' => $patient->isPresumptive() ? 'Presumptive' : 'Normal',
+                ]),
             ],
         ]);
     }

@@ -131,6 +131,28 @@ export default function ProgramFormModal({
                                     aria-invalid={Boolean(errors.patient_name)}
                                 />
                             </Field>
+                            <Field label="Age" error={errors.age}>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="120"
+                                    value={data.age}
+                                    onChange={(event) => setData("age", event.target.value)}
+                                    placeholder="Age in years"
+                                    aria-invalid={Boolean(errors.age)}
+                                />
+                            </Field>
+                            <Field label="Sex" error={errors.sex}>
+                                <select
+                                    value={data.sex}
+                                    onChange={(event) => setData("sex", event.target.value)}
+                                    aria-invalid={Boolean(errors.sex)}
+                                >
+                                    <option value="">Select sex</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                            </Field>
                             <Field label="Contact number" error={errors.contact_number}>
                                 <input
                                     type="tel"

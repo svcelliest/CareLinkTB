@@ -8,19 +8,16 @@ use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view.
+     * The login form now lives in the Landing page's LoginModal, so this
+     * just sends direct visitors back there instead of the old full page.
      */
-    public function create(): Response
+    public function create(): RedirectResponse
     {
-        return Inertia::render('Auth/Login', [
-            'status' => session('status'),
-        ]);
+        return redirect('/');
     }
 
     /**

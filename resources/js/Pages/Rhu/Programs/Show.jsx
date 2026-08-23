@@ -72,6 +72,8 @@ const blankForm = (formType) => ({
     form_type: formType,
     patient_id: "",
     patient_name: "",
+    age: "",
+    sex: "",
     contact_number: "",
     address: "",
     status: "draft",
