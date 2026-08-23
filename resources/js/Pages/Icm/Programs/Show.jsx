@@ -14,6 +14,10 @@ const statusLabels = {
 
 export default function Show({ program }) {
     const statusLabel = statusLabels[program.status] ?? program.status;
+    const scheduleDate = new Date(program.scheduled_at);
+    const scheduleLabel = Number.isNaN(scheduleDate.getTime())
+        ? ""
+        : `${scheduleDate.toLocaleDateString()} ${scheduleDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
     return (
         <DashboardLayout
@@ -44,9 +48,7 @@ export default function Show({ program }) {
                     <p className="program-detail-schedule">
                         <span>{program.location}</span>
                         <span aria-hidden="true">•</span>
-                        <span>
-                            {program.date} {program.time}
-                        </span>
+                        <span>{scheduleLabel}</span>
                     </p>
 
                     <div className="program-detail-status-line">

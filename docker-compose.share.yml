@@ -1,0 +1,44 @@
+name: carelink-tb-share
+
+services:
+    app:
+        image: an2ns/carelink-tb:latest
+        env_file:
+            - .env.share
+        ports:
+            - "8080:80"
+        depends_on:
+            db:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "--fail", "--silent", "http://localhost:80/up"]
+            interval: 10s
+            timeout: 5s
+            retries: 12
+            start_period: 60s
+
+    db:
+        image: mysql:8.4
+        environment:
+            MYSQL_DATABASE: carelink_tb
+            MYSQL_USER: carelink
+            MYSQL_PASSWORD: carelink
+            MYSQL_ROOT_PASSWORD: carelink-root
+        command:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+        volumes:
+            - mysql-data:/var/lib/mysql
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    'mysqladmin ping -h 127.0.0.1 -u"$${MYSQL_USER}" --password="$${MYSQL_PASSWORD}" --silent',
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 20
+            start_period: 20s
+
+volumes:
+    mysql-data:
