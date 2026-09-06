@@ -30,8 +30,6 @@ class MessageController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'role']);
 
-        // Load the lightweight conversation timeline once, then derive each
-        // contact's preview and unread count without issuing an N+1 query.
         $conversationMessages = Message::query()
             ->where(function ($query) use ($currentUser) {
                 $query->where('sender_id', $currentUser->id)
@@ -159,11 +157,41 @@ class MessageController extends Controller
                 ]);
         }
 
+        $search = trim((string) $request->string('message_search'));
+        $messageSearchResults = collect();
+        if ($search !== '') {
+            $escapedSearch = addcslashes($search, '%_\\');
+
+            $messageSearchResults = Message::query()
+                ->where(function ($query) use ($currentUser) {
+                    $query
+                        ->where('sender_id', $currentUser->id)
+                        ->orWhere('recipient_id', $currentUser->id);
+                })
+                ->where('body', 'like', '%' . $escapedSearch . '%')
+                ->latest()
+                ->limit(50)
+                ->get()
+                ->map(function (Message $message) use ($currentUser, $contacts) {
+                    $contactId = $message->sender_id === $currentUser->id ? $message->recipient_id : $message->sender_id;
+
+                    return [
+                        'id' => $message->id,
+                        'contact_id' => $contactId,
+                        'contact_name' => $contacts->firstWhere('id', $contactId)['name'] ?? 'Unknown',
+                        'snippet' => Str::limit($message->body, 100),
+                        'created_at' => $message->created_at->toIso8601String(),
+                        'is_mine' => $message->sender_id === $currentUser->id,
+                    ];
+                });
+        }
+
         return Inertia::render('Messages/Inbox', [
             'role' => $currentUser->role,
             'contacts' => $contacts,
             'selectedContact' => $selectedContact,
             'messages' => $messages,
+            'messageSearchResults' => $messageSearchResults,
         ]);
     }
 
@@ -318,8 +346,8 @@ class MessageController extends Controller
     private function roleLabel(?string $role): string
     {
         return match ($role) {
-            'icm' => 'ICM Coordinator',
-            'rhu' => 'RHU Staff',
+            'icm' => 'ICM',
+            'rhu' => 'RHU',
             'provider' => 'Service Provider',
             default => 'CareLink User',
         };

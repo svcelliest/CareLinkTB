@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLivePoll } from "@/hooks/useLivePoll";
 import { router, useForm, usePage } from "@inertiajs/react";
 import {
     FaCheck,
     FaCheckDouble,
+    FaChevronDown,
     FaEnvelope,
     FaImage,
     FaMagnifyingGlass,
@@ -14,8 +16,8 @@ import {
 import DashboardLayout from "@/Layouts/DashboardLayout";
 
 const roleLabels = {
-    icm: "ICM Coordinator",
-    rhu: "RHU Staff",
+    icm: "ICM",
+    rhu: "RHU",
     provider: "Service Provider",
 };
 
@@ -29,7 +31,8 @@ const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const FILE_ACCEPT =
     ".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.ppt,.pptx";
-const IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp";
+const IMAGE_ACCEPT =
+    ".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp";
 
 const formatFileSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -80,7 +83,8 @@ const formatDay = (value) => {
     return new Intl.DateTimeFormat(undefined, {
         month: "long",
         day: "numeric",
-        year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
+        year:
+            date.getFullYear() === today.getFullYear() ? undefined : "numeric",
     }).format(date);
 };
 
@@ -93,16 +97,31 @@ const initials = (name) =>
         .join("")
         .toUpperCase();
 
-export default function Inbox({ role, contacts, selectedContact, messages }) {
+export default function Inbox({
+    role,
+    contacts,
+    selectedContact,
+    messages,
+    messageSearchResults = [],
+}) {
     const { auth } = usePage().props;
     const currentUser = auth.user;
     const [search, setSearch] = useState("");
+    const [highlightMessageId, setHighlightMessageId] = useState(null);
     const [activeTab, setActiveTab] = useState("inbox");
     const [newMessageOpen, setNewMessageOpen] = useState(false);
     const [composeSubject, setComposeSubject] = useState("");
     const [composeRecipientSearch, setComposeRecipientSearch] = useState("");
+    const [isRecipientsOpen, setIsRecipientsOpen] = useState(false);
+    const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
     const bottomRef = useRef(null);
+    const suppressAutoScrollRef = useRef(false);
     const composeRecipientRef = useRef(null);
+    const recipientDropdownRef = useRef(null);
+    const isRecipientsOpenRef = useRef(false);
+    const confirmDiscardOpenRef = useRef(false);
+    const confirmCancelRef = useRef(null);
+    const closeComposeRef = useRef(null);
     const composeFileInputRef = useRef(null);
     const composeImageInputRef = useRef(null);
     const replyAttachmentInputRef = useRef(null);
@@ -128,10 +147,14 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
         attachments: [],
     });
 
-    const filteredContacts = useMemo(() => {
-        const term = search.trim().toLowerCase();
+    const isSearching = search.trim().length > 0;
 
+    const filteredContacts = useMemo(() => {
         return contacts.filter((contact) => {
+            if (!contact.last_message) {
+                return false;
+            }
+
             if (activeTab === "sent" && !contact.last_message?.is_mine) {
                 return false;
             }
@@ -140,20 +163,9 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                 return false;
             }
 
-            if (!term) return true;
-
-            return [
-                contact.name,
-                contact.email,
-                contact.role_label,
-                contact.last_message?.body,
-            ]
-                .filter(Boolean)
-                .join(" ")
-                .toLowerCase()
-                .includes(term);
+            return true;
         });
-    }, [activeTab, contacts, search]);
+    }, [activeTab, contacts]);
 
     const filteredComposeContacts = useMemo(() => {
         const term = composeRecipientSearch.trim().toLowerCase();
@@ -168,14 +180,46 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
         );
     }, [composeRecipientSearch, contacts]);
 
+    const selectedComposeContacts = useMemo(
+        () =>
+            contacts.filter((contact) =>
+                composeForm.data.recipient_ids.includes(contact.id),
+            ),
+        [contacts, composeForm.data.recipient_ids],
+    );
+
     useEffect(() => {
         setReplyData("recipient_id", selectedContact?.id ?? "");
         clearReplyErrors();
     }, [selectedContact?.id]);
 
+    const highlightTarget = highlightMessageId
+        ? messages.find((message) => message.id === highlightMessageId)
+        : undefined;
+
     useEffect(() => {
+        if (suppressAutoScrollRef.current) {
+            suppressAutoScrollRef.current = false;
+            return;
+        }
         bottomRef.current?.scrollIntoView({ block: "end" });
     }, [messages.length, selectedContact?.id]);
+
+    useEffect(() => {
+        if (!highlightTarget) return undefined;
+
+        const frame = window.requestAnimationFrame(() => {
+            document
+                .getElementById(`message-${highlightTarget.id}`)
+                ?.scrollIntoView({ block: "center", behavior: "smooth" });
+        });
+        const timeoutId = setTimeout(() => setHighlightMessageId(null), 2000);
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            clearTimeout(timeoutId);
+        };
+    }, [highlightMessageId]);
 
     useEffect(() => {
         if (!selectedContact || selectedContact.unread_count === 0) return;
@@ -190,24 +234,34 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
         );
     }, [selectedContact?.id, selectedContact?.unread_count]);
 
+    useLivePoll(
+        ["contacts", "selectedContact", "messages", "unreadMessageCount"],
+        5000,
+    );
+
     useEffect(() => {
-        const refreshTimer = window.setInterval(() => {
-            if (document.hidden) return;
+        const term = search.trim();
 
-            router.reload({
-                only: [
-                    "contacts",
-                    "selectedContact",
-                    "messages",
-                    "unreadMessageCount",
-                ],
-                preserveScroll: true,
-                preserveState: true,
-            });
-        }, 10000);
+        if (term.length < 2) return undefined;
 
-        return () => window.clearInterval(refreshTimer);
-    }, [selectedContact?.id]);
+        const timeoutId = setTimeout(() => {
+            router.get(
+                route(`${role}.inbox`),
+                {
+                    ...(selectedContact ? { contact: selectedContact.id } : {}),
+                    message_search: term,
+                },
+                {
+                    only: ["messageSearchResults"],
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                },
+            );
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [search, role, selectedContact?.id]);
 
     useEffect(() => {
         if (!newMessageOpen) return undefined;
@@ -216,9 +270,21 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
             composeRecipientRef.current?.focus();
         });
         const handleKeyDown = (event) => {
-            if (event.key === "Escape") {
-                setNewMessageOpen(false);
+            if (event.key !== "Escape") return;
+
+            // Highest layer claims Escape first: the discard-confirm
+            // dialog, then the recipient dropdown, then finally the
+            // compose window itself — each one only closing what's on top.
+            if (confirmDiscardOpenRef.current) {
+                setConfirmDiscardOpen(false);
+                return;
             }
+            if (isRecipientsOpenRef.current) return;
+
+            // Routed through the ref (rather than calling closeCompose
+            // directly) so this always sees the latest draft state instead
+            // of whatever it was when the modal first opened.
+            closeComposeRef.current?.();
         };
 
         window.addEventListener("keydown", handleKeyDown);
@@ -229,9 +295,66 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
         };
     }, [newMessageOpen]);
 
-    const openConversation = (contact) => {
+    useEffect(() => {
+        isRecipientsOpenRef.current = isRecipientsOpen;
+
+        // The search term is only ever meant to filter the open dropdown;
+        // once it closes, the field switches to showing who's selected, so
+        // stale search text should never linger underneath that.
+        if (!isRecipientsOpen) {
+            setComposeRecipientSearch("");
+        }
+    }, [isRecipientsOpen]);
+
+    useEffect(() => {
+        confirmDiscardOpenRef.current = confirmDiscardOpen;
+
+        if (!confirmDiscardOpen) return undefined;
+
+        const focusFrame = window.requestAnimationFrame(() => {
+            confirmCancelRef.current?.focus();
+        });
+
+        return () => window.cancelAnimationFrame(focusFrame);
+    }, [confirmDiscardOpen]);
+
+    useEffect(() => {
+        if (!isRecipientsOpen) return undefined;
+
+        const focusFrame = window.requestAnimationFrame(() => {
+            composeRecipientRef.current?.focus();
+        });
+        const handleClickOutside = (event) => {
+            if (
+                recipientDropdownRef.current &&
+                !recipientDropdownRef.current.contains(event.target)
+            ) {
+                setIsRecipientsOpen(false);
+            }
+        };
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") {
+                setIsRecipientsOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.cancelAnimationFrame(focusFrame);
+            document.removeEventListener("mousedown", handleClickOutside);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isRecipientsOpen]);
+
+    const openConversation = (contact, targetMessageId = null) => {
         setNewMessageOpen(false);
         setSearch("");
+        setHighlightMessageId(targetMessageId);
+        if (targetMessageId) {
+            suppressAutoScrollRef.current = true;
+        }
         router.get(
             route(`${role}.inbox`),
             { contact: contact.id },
@@ -248,13 +371,42 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
         composeForm.clearErrors();
         setComposeSubject("");
         setComposeRecipientSearch("");
+        setIsRecipientsOpen(false);
+        setConfirmDiscardOpen(false);
         setNewMessageOpen(true);
     };
 
-    const closeCompose = () => {
+    // Actually tears the compose window down — called directly when there's
+    // nothing to lose, or from the discard-confirm dialog once the user
+    // confirms.
+    const finishCloseCompose = () => {
+        // Exit out of any in-progress recipient search before the window
+        // disappears, rather than leaving the field focused underneath it.
+        composeRecipientRef.current?.blur();
         composeForm.clearErrors();
+        setIsRecipientsOpen(false);
+        setConfirmDiscardOpen(false);
         setNewMessageOpen(false);
     };
+
+    const closeCompose = () => {
+        const hasDraft =
+            composeForm.data.recipient_ids.length > 0 ||
+            composeSubject.trim().length > 0 ||
+            composeForm.data.body.trim().length > 0 ||
+            composeForm.data.attachments.length > 0;
+
+        if (hasDraft) {
+            setConfirmDiscardOpen(true);
+            return;
+        }
+
+        finishCloseCompose();
+    };
+
+    useEffect(() => {
+        closeComposeRef.current = closeCompose;
+    });
 
     const toggleComposeRecipient = (contactId) => {
         const selectedIds = composeForm.data.recipient_ids;
@@ -278,7 +430,9 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
         composeForm.setData(
             "recipient_ids",
             allVisibleSelected
-                ? selectedIds.filter((contactId) => !visibleIds.includes(contactId))
+                ? selectedIds.filter(
+                      (contactId) => !visibleIds.includes(contactId),
+                  )
                 : [...new Set([...selectedIds, ...visibleIds])],
         );
         composeForm.clearErrors();
@@ -306,7 +460,9 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
         );
         const uniqueFiles = selectedFiles.filter(
             (file) =>
-                !existingKeys.has(`${file.name}-${file.size}-${file.lastModified}`),
+                !existingKeys.has(
+                    `${file.name}-${file.size}-${file.lastModified}`,
+                ),
         );
 
         if (existingFiles.length + uniqueFiles.length > MAX_ATTACHMENTS) {
@@ -331,10 +487,13 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
 
     const sendReply = (event) => {
         event?.preventDefault();
-        if (!selectedContact || !replyData.body.trim() || replyProcessing) return;
+        if (!selectedContact || !replyData.body.trim() || replyProcessing)
+            return;
 
         postReply(route("messages.store"), {
+            preserveState: true,
             preserveScroll: true,
+            showProgress: false,
             forceFormData: true,
             onSuccess: () => resetReply("body", "attachments"),
         });
@@ -375,6 +534,7 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
             onSuccess: () => {
                 composeForm.reset();
                 setComposeSubject("");
+                setIsRecipientsOpen(false);
                 setNewMessageOpen(false);
                 router.get(
                     route(`${role}.inbox`),
@@ -414,76 +574,145 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                 type="search"
                                 placeholder="Search messages..."
                                 value={search}
-                                onChange={(event) => setSearch(event.target.value)}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
                             />
                         </label>
                     </div>
 
-                    <div className="inbox-tabs" role="tablist" aria-label="Message filters">
-                        {inboxTabs.map((tab) => (
-                            <button
-                                type="button"
-                                role="tab"
-                                key={tab.id}
-                                className={activeTab === tab.id ? "active" : ""}
-                                aria-selected={activeTab === tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="inbox-contact-list">
-                        {filteredContacts.map((contact) => (
-                            <button
-                                type="button"
-                                key={contact.id}
-                                className={`inbox-contact ${
-                                    selectedContact?.id === contact.id ? "active" : ""
-                                }`}
-                                onClick={() => openConversation(contact)}
-                                aria-pressed={selectedContact?.id === contact.id}
-                            >
-                                <span className="inbox-contact-row inbox-contact-heading">
-                                    <strong>{contact.name}</strong>
-                                    {contact.last_message && (
-                                        <time dateTime={contact.last_message.created_at}>
+                    {isSearching ? (
+                        <div className="inbox-contact-list inbox-message-results">
+                            <p className="inbox-search-section-label">
+                                Messages
+                            </p>
+                            {messageSearchResults.map((result) => (
+                                <button
+                                    type="button"
+                                    key={result.id}
+                                    className="inbox-contact"
+                                    onClick={() =>
+                                        openConversation(
+                                            { id: result.contact_id },
+                                            result.id,
+                                        )
+                                    }
+                                >
+                                    <span className="inbox-contact-row inbox-contact-heading">
+                                        <strong>{result.contact_name}</strong>
+                                        <time dateTime={result.created_at}>
                                             {formatPreviewTime(
-                                                contact.last_message.created_at,
+                                                result.created_at,
                                             )}
                                         </time>
-                                    )}
-                                </span>
-                                <span className="inbox-contact-subject">
-                                    {contact.unread_count > 0 && (
-                                        <span className="inbox-unread-dot" aria-hidden="true" />
-                                    )}
-                                    <strong>
-                                        {contact.last_message?.body ?? "Start a conversation"}
-                                    </strong>
-                                    {contact.unread_count > 0 && (
-                                        <span className="inbox-unread-count">
-                                            {contact.unread_count > 99
-                                                ? "99+"
-                                                : contact.unread_count}
-                                        </span>
-                                    )}
-                                </span>
-                                <span className="inbox-contact-preview">
-                                    {contact.role_label} · {contact.email}
-                                </span>
-                            </button>
-                        ))}
+                                    </span>
+                                    <span className="inbox-contact-subject">
+                                        <strong>
+                                            {result.is_mine ? "You: " : ""}
+                                            {result.snippet}
+                                        </strong>
+                                    </span>
+                                </button>
+                            ))}
 
-                        {filteredContacts.length === 0 && (
-                            <div className="inbox-no-results">
-                                {search
-                                    ? `No ${activeTab} messages match “${search}”.`
-                                    : `No ${activeTab} messages to show.`}
+                            {messageSearchResults.length === 0 && (
+                                <div className="inbox-no-results">
+                                    {search.trim().length < 2
+                                        ? "Keep typing to search messages…"
+                                        : `No messages match “${search}”.`}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            <div
+                                className="inbox-tabs"
+                                role="tablist"
+                                aria-label="Message filters"
+                            >
+                                {inboxTabs.map((tab) => (
+                                    <button
+                                        type="button"
+                                        role="tab"
+                                        key={tab.id}
+                                        className={
+                                            activeTab === tab.id ? "active" : ""
+                                        }
+                                        aria-selected={activeTab === tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
                             </div>
-                        )}
-                    </div>
+
+                            <div className="inbox-contact-list">
+                                {filteredContacts.map((contact) => (
+                                    <button
+                                        type="button"
+                                        key={contact.id}
+                                        className={`inbox-contact ${
+                                            selectedContact?.id === contact.id
+                                                ? "active"
+                                                : ""
+                                        }`}
+                                        onClick={() =>
+                                            openConversation(contact)
+                                        }
+                                        aria-pressed={
+                                            selectedContact?.id === contact.id
+                                        }
+                                    >
+                                        <span className="inbox-contact-row inbox-contact-heading">
+                                            <strong>{contact.name}</strong>
+                                            {contact.last_message && (
+                                                <time
+                                                    dateTime={
+                                                        contact.last_message
+                                                            .created_at
+                                                    }
+                                                >
+                                                    {formatPreviewTime(
+                                                        contact.last_message
+                                                            .created_at,
+                                                    )}
+                                                </time>
+                                            )}
+                                        </span>
+                                        <span className="inbox-contact-subject">
+                                            {contact.unread_count > 0 && (
+                                                <span
+                                                    className="inbox-unread-dot"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
+                                            <strong>
+                                                {contact.last_message?.body ??
+                                                    "Start a conversation"}
+                                            </strong>
+                                            {contact.unread_count > 0 && (
+                                                <span className="inbox-unread-count">
+                                                    {contact.unread_count > 99
+                                                        ? "99+"
+                                                        : contact.unread_count}
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span className="inbox-contact-preview">
+                                            {contact.role_label} ·{" "}
+                                            {contact.email}
+                                        </span>
+                                    </button>
+                                ))}
+
+                                {filteredContacts.length === 0 && (
+                                    <div className="inbox-no-results">
+                                        {`No ${activeTab} messages to show.`}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </aside>
 
                 <div className="inbox-conversation-panel">
@@ -518,60 +747,90 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                         </span>
                                         <h3>Start the conversation</h3>
                                         <p>
-                                            Send a message to {selectedContact.name}. It
-                                            will appear in their {selectedContact.role_label}
+                                            Send a message to{" "}
+                                            {selectedContact.name}. It will
+                                            appear in their{" "}
+                                            {selectedContact.role_label}
                                             inbox.
                                         </p>
                                     </div>
                                 )}
 
                                 {messages.map((message, index) => {
-                                    const mine = message.sender_id === currentUser.id;
+                                    const mine =
+                                        message.sender_id === currentUser.id;
                                     const previous = messages[index - 1];
                                     const showDay =
                                         !previous ||
-                                        new Date(previous.created_at).toDateString() !==
-                                            new Date(message.created_at).toDateString();
+                                        new Date(
+                                            previous.created_at,
+                                        ).toDateString() !==
+                                            new Date(
+                                                message.created_at,
+                                            ).toDateString();
 
                                     return (
                                         <div key={message.id}>
                                             {showDay && (
                                                 <div className="inbox-day-divider">
-                                                    <span>{formatDay(message.created_at)}</span>
+                                                    <span>
+                                                        {formatDay(
+                                                            message.created_at,
+                                                        )}
+                                                    </span>
                                                 </div>
                                             )}
                                             <div
+                                                id={`message-${message.id}`}
                                                 className={`inbox-message-row ${
                                                     mine ? "mine" : "theirs"
+                                                } ${
+                                                    highlightTarget?.id ===
+                                                    message.id
+                                                        ? "highlighted"
+                                                        : ""
                                                 }`}
                                             >
                                                 <div className="inbox-message-bubble">
                                                     <p>{message.body}</p>
-                                                    {message.attachments?.length > 0 && (
+                                                    {message.attachments
+                                                        ?.length > 0 && (
                                                         <div className="inbox-message-attachments">
                                                             {message.attachments.map(
                                                                 (attachment) =>
                                                                     attachment.is_image ? (
                                                                         <a
-                                                                            key={attachment.id}
+                                                                            key={
+                                                                                attachment.id
+                                                                            }
                                                                             className="inbox-image-attachment"
-                                                                            href={attachment.url}
+                                                                            href={
+                                                                                attachment.url
+                                                                            }
                                                                             target="_blank"
                                                                             rel="noreferrer"
                                                                             aria-label={`Open ${attachment.name}`}
                                                                         >
                                                                             <img
-                                                                                src={attachment.url}
-                                                                                alt={attachment.name}
+                                                                                src={
+                                                                                    attachment.url
+                                                                                }
+                                                                                alt={
+                                                                                    attachment.name
+                                                                                }
                                                                                 loading="lazy"
                                                                             />
                                                                             <span>
-                                                                                {attachment.name}
+                                                                                {
+                                                                                    attachment.name
+                                                                                }
                                                                             </span>
                                                                         </a>
                                                                     ) : (
                                                                         <a
-                                                                            key={attachment.id}
+                                                                            key={
+                                                                                attachment.id
+                                                                            }
                                                                             className="inbox-file-attachment"
                                                                             href={
                                                                                 attachment.download_url
@@ -596,8 +855,14 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                                         </div>
                                                     )}
                                                     <span className="inbox-message-meta">
-                                                        <time dateTime={message.created_at}>
-                                                            {formatTime(message.created_at)}
+                                                        <time
+                                                            dateTime={
+                                                                message.created_at
+                                                            }
+                                                        >
+                                                            {formatTime(
+                                                                message.created_at,
+                                                            )}
                                                         </time>
                                                         {mine &&
                                                             (message.read_at ? (
@@ -617,35 +882,48 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                 <div ref={bottomRef} />
                             </div>
 
-                            <form className="inbox-composer" onSubmit={sendReply}>
+                            <form
+                                className="inbox-composer"
+                                onSubmit={sendReply}
+                            >
                                 {replyData.attachments.length > 0 && (
                                     <div className="inbox-selected-attachments inbox-reply-attachments">
-                                        {replyData.attachments.map((file, index) => (
-                                            <span
-                                                key={`${file.name}-${file.size}-${file.lastModified}`}
-                                                className="inbox-selected-attachment"
-                                            >
-                                                <FaPaperclip />
-                                                <span title={file.name}>{file.name}</span>
-                                                <small>{formatFileSize(file.size)}</small>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        removeAttachment(
-                                                            {
-                                                                data: replyData,
-                                                                setData: setReplyData,
-                                                                clearErrors: clearReplyErrors,
-                                                            },
-                                                            index,
-                                                        )
-                                                    }
-                                                    aria-label={`Remove ${file.name}`}
+                                        {replyData.attachments.map(
+                                            (file, index) => (
+                                                <span
+                                                    key={`${file.name}-${file.size}-${file.lastModified}`}
+                                                    className="inbox-selected-attachment"
                                                 >
-                                                    <FaXmark />
-                                                </button>
-                                            </span>
-                                        ))}
+                                                    <FaPaperclip />
+                                                    <span title={file.name}>
+                                                        {file.name}
+                                                    </span>
+                                                    <small>
+                                                        {formatFileSize(
+                                                            file.size,
+                                                        )}
+                                                    </small>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            removeAttachment(
+                                                                {
+                                                                    data: replyData,
+                                                                    setData:
+                                                                        setReplyData,
+                                                                    clearErrors:
+                                                                        clearReplyErrors,
+                                                                },
+                                                                index,
+                                                            )
+                                                        }
+                                                        aria-label={`Remove ${file.name}`}
+                                                    >
+                                                        <FaXmark />
+                                                    </button>
+                                                </span>
+                                            ),
+                                        )}
                                     </div>
                                 )}
                                 <input
@@ -672,7 +950,8 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                     }
                                     disabled={
                                         replyProcessing ||
-                                        replyData.attachments.length >= MAX_ATTACHMENTS
+                                        replyData.attachments.length >=
+                                            MAX_ATTACHMENTS
                                     }
                                     aria-label="Attach files or images"
                                     title="Attach files or images"
@@ -686,7 +965,10 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                         placeholder={`Message ${selectedContact.name}`}
                                         value={replyData.body}
                                         onChange={(event) =>
-                                            setReplyData("body", event.target.value)
+                                            setReplyData(
+                                                "body",
+                                                event.target.value,
+                                            )
                                         }
                                         onKeyDown={(event) => {
                                             if (
@@ -705,11 +987,14 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                     type="submit"
                                     className="inbox-send-button"
                                     disabled={
-                                        !replyData.body.trim() || replyProcessing
+                                        !replyData.body.trim() ||
+                                        replyProcessing
                                     }
                                 >
                                     <FaPaperPlane />
-                                    <span>{replyProcessing ? "Sending" : "Send"}</span>
+                                    <span>
+                                        {replyProcessing ? "Sending" : "Send"}
+                                    </span>
                                 </button>
                                 {(replyErrors.body ||
                                     replyErrors.recipient_id ||
@@ -772,80 +1057,191 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                 className="inbox-compose-form"
                                 onSubmit={sendNewMessage}
                             >
-                                <div className="inbox-compose-field inbox-compose-recipients">
+                                <div
+                                    className="inbox-compose-field inbox-recipient-dropdown"
+                                    ref={recipientDropdownRef}
+                                >
                                     <span>To (Recipients)</span>
-                                    <input
-                                        ref={composeRecipientRef}
-                                        type="search"
-                                        placeholder="Search users..."
-                                        value={composeRecipientSearch}
-                                        onChange={(event) =>
-                                            setComposeRecipientSearch(event.target.value)
-                                        }
-                                        aria-label="Search message recipients"
-                                    />
-                                    <div className="inbox-recipient-toolbar">
-                                        <span>
-                                            {composeForm.data.recipient_ids.length} selected
-                                        </span>
+                                    <div className="inbox-recipient-input-wrap">
+                                        <input
+                                            ref={composeRecipientRef}
+                                            type="search"
+                                            className="inbox-recipient-trigger"
+                                            placeholder="Select/Search recipients"
+                                            value={composeRecipientSearch}
+                                            onChange={(event) => {
+                                                setComposeRecipientSearch(
+                                                    event.target.value,
+                                                );
+                                                setIsRecipientsOpen(true);
+                                            }}
+                                            onClick={() =>
+                                                setIsRecipientsOpen(true)
+                                            }
+                                            aria-haspopup="true"
+                                            aria-expanded={isRecipientsOpen}
+                                            aria-label="Select or search message recipients"
+                                        />
                                         <button
                                             type="button"
-                                            onClick={toggleVisibleRecipients}
-                                            disabled={filteredComposeContacts.length === 0}
+                                            className="inbox-recipient-trigger-icon"
+                                            aria-label={
+                                                isRecipientsOpen
+                                                    ? "Close recipient list"
+                                                    : "Open recipient list"
+                                            }
+                                            onClick={() =>
+                                                setIsRecipientsOpen(
+                                                    (open) => !open,
+                                                )
+                                            }
                                         >
-                                            {filteredComposeContacts.length > 0 &&
-                                            filteredComposeContacts.every((contact) =>
-                                                composeForm.data.recipient_ids.includes(
-                                                    contact.id,
-                                                ),
-                                            )
-                                                ? "Deselect visible"
-                                                : "Select visible"}
+                                            <FaChevronDown aria-hidden="true" />
                                         </button>
                                     </div>
-                                    <div
-                                        className="inbox-recipient-options"
-                                        role="group"
-                                        aria-label="Select message recipients"
-                                    >
-                                        {filteredComposeContacts.map((contact) => {
-                                            const checked =
-                                                composeForm.data.recipient_ids.includes(
-                                                    contact.id,
-                                                );
 
-                                            return (
-                                                <label
-                                                    key={contact.id}
-                                                    className={checked ? "selected" : ""}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={() =>
-                                                            toggleComposeRecipient(contact.id)
-                                                        }
-                                                    />
+                                    {selectedComposeContacts.length > 0 && (
+                                        <div className="inbox-selected-recipients">
+                                            {selectedComposeContacts.map(
+                                                (contact) => (
                                                     <span
-                                                        className={`inbox-avatar role-${contact.role}`}
-                                                        aria-hidden="true"
+                                                        key={contact.id}
+                                                        className="inbox-selected-recipient"
                                                     >
-                                                        {initials(contact.name)}
+                                                        <span
+                                                            className={`inbox-avatar role-${contact.role}`}
+                                                            aria-hidden="true"
+                                                        >
+                                                            {initials(
+                                                                contact.name,
+                                                            )}
+                                                        </span>
+                                                        <span
+                                                            title={contact.name}
+                                                        >
+                                                            {contact.name}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                toggleComposeRecipient(
+                                                                    contact.id,
+                                                                )
+                                                            }
+                                                            aria-label={`Remove ${contact.name}`}
+                                                        >
+                                                            <FaXmark />
+                                                        </button>
                                                     </span>
-                                                    <span className="inbox-recipient-copy">
-                                                        <strong>{contact.name}</strong>
-                                                        <small>
-                                                            {contact.role_label} · {contact.email}
-                                                        </small>
-                                                    </span>
-                                                </label>
-                                            );
-                                        })}
+                                                ),
+                                            )}
+                                        </div>
+                                    )}
 
-                                        {filteredComposeContacts.length === 0 && (
-                                            <p>No users match your search.</p>
-                                        )}
-                                    </div>
+                                    {isRecipientsOpen && (
+                                        <div className="inbox-recipient-panel">
+                                            <div className="inbox-recipient-toolbar">
+                                                <span>
+                                                    {
+                                                        composeForm.data
+                                                            .recipient_ids
+                                                            .length
+                                                    }{" "}
+                                                    selected
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={
+                                                        toggleVisibleRecipients
+                                                    }
+                                                    disabled={
+                                                        filteredComposeContacts.length ===
+                                                        0
+                                                    }
+                                                >
+                                                    {filteredComposeContacts.length >
+                                                        0 &&
+                                                    filteredComposeContacts.every(
+                                                        (contact) =>
+                                                            composeForm.data.recipient_ids.includes(
+                                                                contact.id,
+                                                            ),
+                                                    )
+                                                        ? "Deselect All"
+                                                        : "Select All"}
+                                                </button>
+                                            </div>
+                                            <div
+                                                className="inbox-recipient-options"
+                                                role="group"
+                                                aria-label="Select message recipients"
+                                            >
+                                                {filteredComposeContacts.map(
+                                                    (contact) => {
+                                                        const checked =
+                                                            composeForm.data.recipient_ids.includes(
+                                                                contact.id,
+                                                            );
+
+                                                        return (
+                                                            <label
+                                                                key={contact.id}
+                                                                className={
+                                                                    checked
+                                                                        ? "selected"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={
+                                                                        checked
+                                                                    }
+                                                                    onChange={() =>
+                                                                        toggleComposeRecipient(
+                                                                            contact.id,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <span
+                                                                    className={`inbox-avatar role-${contact.role}`}
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    {initials(
+                                                                        contact.name,
+                                                                    )}
+                                                                </span>
+                                                                <span className="inbox-recipient-copy">
+                                                                    <strong>
+                                                                        {
+                                                                            contact.name
+                                                                        }
+                                                                    </strong>
+                                                                    <small>
+                                                                        {
+                                                                            contact.role_label
+                                                                        }{" "}
+                                                                        ·{" "}
+                                                                        {
+                                                                            contact.email
+                                                                        }
+                                                                    </small>
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    },
+                                                )}
+
+                                                {filteredComposeContacts.length ===
+                                                    0 && (
+                                                    <p>
+                                                        No users match your
+                                                        search.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <label className="inbox-compose-field">
@@ -867,7 +1263,9 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                         placeholder="Message subject"
                                         value={composeSubject}
                                         onChange={(event) =>
-                                            setComposeSubject(event.target.value)
+                                            setComposeSubject(
+                                                event.target.value,
+                                            )
                                         }
                                     />
                                 </label>
@@ -920,8 +1318,8 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                             }
                                             disabled={
                                                 composeForm.processing ||
-                                                composeForm.data.attachments.length >=
-                                                    MAX_ATTACHMENTS
+                                                composeForm.data.attachments
+                                                    .length >= MAX_ATTACHMENTS
                                             }
                                         >
                                             <FaPaperclip />
@@ -934,15 +1332,16 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                             }
                                             disabled={
                                                 composeForm.processing ||
-                                                composeForm.data.attachments.length >=
-                                                    MAX_ATTACHMENTS
+                                                composeForm.data.attachments
+                                                    .length >= MAX_ATTACHMENTS
                                             }
                                         >
                                             <FaImage />
                                             Attach Image
                                         </button>
                                     </div>
-                                    {composeForm.data.attachments.length > 0 && (
+                                    {composeForm.data.attachments.length >
+                                        0 && (
                                         <div className="inbox-selected-attachments">
                                             {composeForm.data.attachments.map(
                                                 (file, index) => (
@@ -950,7 +1349,9 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                                         key={`${file.name}-${file.size}-${file.lastModified}`}
                                                         className="inbox-selected-attachment"
                                                     >
-                                                        {file.type.startsWith("image/") ? (
+                                                        {file.type.startsWith(
+                                                            "image/",
+                                                        ) ? (
                                                             <FaImage />
                                                         ) : (
                                                             <FaPaperclip />
@@ -959,7 +1360,9 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                                             {file.name}
                                                         </span>
                                                         <small>
-                                                            {formatFileSize(file.size)}
+                                                            {formatFileSize(
+                                                                file.size,
+                                                            )}
                                                         </small>
                                                         <button
                                                             type="button"
@@ -982,10 +1385,14 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
 
                                 {(composeForm.errors.body ||
                                     firstRecipientError(composeForm.errors) ||
-                                    firstAttachmentError(composeForm.errors)) && (
+                                    firstAttachmentError(
+                                        composeForm.errors,
+                                    )) && (
                                     <p className="inbox-compose-error">
                                         {composeForm.errors.body ??
-                                            firstRecipientError(composeForm.errors) ??
+                                            firstRecipientError(
+                                                composeForm.errors,
+                                            ) ??
                                             firstAttachmentError(
                                                 composeForm.errors,
                                             )}
@@ -1004,16 +1411,63 @@ export default function Inbox({ role, contacts, selectedContact, messages }) {
                                         type="submit"
                                         className="inbox-compose-send"
                                         disabled={
-                                            composeForm.data.recipient_ids.length === 0 ||
+                                            composeForm.data.recipient_ids
+                                                .length === 0 ||
                                             !composeForm.data.body.trim() ||
                                             composeForm.processing
                                         }
                                     >
-                                        {composeForm.processing ? "Sending" : "Send"}
+                                        {composeForm.processing
+                                            ? "Sending"
+                                            : "Send"}
                                     </button>
                                 </footer>
                             </form>
                         </section>
+                    </div>
+                )}
+
+                {confirmDiscardOpen && (
+                    <div
+                        className="inbox-confirm-scrim"
+                        role="presentation"
+                        onMouseDown={(event) => {
+                            if (event.target === event.currentTarget) {
+                                setConfirmDiscardOpen(false);
+                            }
+                        }}
+                    >
+                        <div
+                            className="inbox-confirm-dialog"
+                            role="alertdialog"
+                            aria-modal="true"
+                            aria-labelledby="discard-message-title"
+                            aria-describedby="discard-message-body"
+                        >
+                            <h2 id="discard-message-title">
+                                Discard this message?
+                            </h2>
+                            <p id="discard-message-body">
+                                Your draft will be lost. This can't be undone.
+                            </p>
+                            <div className="inbox-confirm-actions">
+                                <button
+                                    ref={confirmCancelRef}
+                                    type="button"
+                                    className="inbox-confirm-cancel"
+                                    onClick={() => setConfirmDiscardOpen(false)}
+                                >
+                                    Keep editing
+                                </button>
+                                <button
+                                    type="button"
+                                    className="inbox-confirm-discard"
+                                    onClick={finishCloseCompose}
+                                >
+                                    Discard
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </section>
