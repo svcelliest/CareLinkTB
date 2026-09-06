@@ -22,6 +22,13 @@ const categories = [
     { value: "security", label: "Security" },
 ];
 
+const roleFilters = [
+    { value: "all", label: "All roles" },
+    { value: "icm", label: "ICM" },
+    { value: "rhu", label: "RHU" },
+    { value: "provider", label: "Provider" },
+];
+
 const categoryIcons = {
     accounts: FaAddressCard,
     programs: FaCalendarPlus,
@@ -47,18 +54,22 @@ function dateHeading(value) {
     return new Intl.DateTimeFormat(undefined, {
         month: "long",
         day: "numeric",
-        year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
+        year:
+            date.getFullYear() === today.getFullYear() ? undefined : "numeric",
     }).format(date);
 }
 
 function activityTime(value) {
     return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
         hour: "numeric",
         minute: "2-digit",
     }).format(new Date(value));
 }
 
-export default function Index({ role, activities, filters }) {
+export default function Index({ role, activities, filters, isGlobal = false }) {
     const [search, setSearch] = useState(filters.search ?? "");
     const routeName = `${role}.activity`;
     const groups = useMemo(() => {
@@ -80,11 +91,16 @@ export default function Index({ role, activities, filters }) {
         }, []);
     }, [activities.data]);
 
-    const visit = (category, nextSearch = search) => {
+    const visit = (overrides = {}) => {
+        const category = overrides.category ?? filters.category;
+        const roleFilter = overrides.role ?? filters.role ?? "all";
+        const nextSearch = overrides.search ?? search;
+
         router.get(
             route(routeName),
             {
                 category,
+                role: roleFilter !== "all" ? roleFilter : undefined,
                 search: nextSearch.trim() || undefined,
             },
             {
@@ -97,12 +113,12 @@ export default function Index({ role, activities, filters }) {
 
     const submitSearch = (event) => {
         event.preventDefault();
-        visit(filters.category);
+        visit();
     };
 
     const clearSearch = () => {
         setSearch("");
-        visit(filters.category, "");
+        visit({ search: "" });
     };
 
     return (
@@ -111,7 +127,10 @@ export default function Index({ role, activities, filters }) {
             title="Recent Activity"
             contentClassName="dash-content-activity"
         >
-            <section className="activity-page" aria-labelledby="activity-heading">
+            <section
+                className="activity-page"
+                aria-labelledby="activity-heading"
+            >
                 <div className="activity-hero">
                     <div className="activity-hero-icon" aria-hidden="true">
                         <FaChartLine />
@@ -119,31 +138,75 @@ export default function Index({ role, activities, filters }) {
                     <div>
                         <h2 id="activity-heading">Recent activity</h2>
                         <p>
-                            Review the actions completed through your CareLink account.
+                            {isGlobal
+                                ? "Review actions completed by every RHU, Provider, and ICM account in CareLink."
+                                : "Review the actions completed through your CareLink account."}
                         </p>
                     </div>
                 </div>
 
                 <div className="activity-controls">
-                    <div className="activity-tabs" role="group" aria-label="Filter activity">
-                        {categories.map((category) => (
-                            <button
-                                type="button"
-                                key={category.value}
-                                className={
-                                    filters.category === category.value ? "active" : ""
-                                }
-                                aria-pressed={filters.category === category.value}
-                                onClick={() => visit(category.value)}
-                            >
-                                {category.label}
-                            </button>
-                        ))}
+                    <div className="activity-filter-groups">
+                        <div
+                            className="activity-tabs"
+                            role="group"
+                            aria-label="Filter activity"
+                        >
+                            {categories.map((category) => (
+                                <button
+                                    type="button"
+                                    key={category.value}
+                                    className={
+                                        filters.category === category.value
+                                            ? "active"
+                                            : ""
+                                    }
+                                    aria-pressed={
+                                        filters.category === category.value
+                                    }
+                                    onClick={() =>
+                                        visit({ category: category.value })
+                                    }
+                                >
+                                    {category.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {isGlobal && (
+                            <label className="activity-role-select">
+                                <span className="sr-only">
+                                    Filter activity by role
+                                </span>
+                                <select
+                                    value={filters.role ?? "all"}
+                                    onChange={(event) =>
+                                        visit({ role: event.target.value })
+                                    }
+                                >
+                                    {roleFilters.map((roleOption) => (
+                                        <option
+                                            key={roleOption.value}
+                                            value={roleOption.value}
+                                        >
+                                            {roleOption.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
                     </div>
 
-                    <form className="activity-search" onSubmit={submitSearch} role="search">
+                    <form
+                        className="activity-search"
+                        onSubmit={submitSearch}
+                        role="search"
+                    >
                         <FaMagnifyingGlass aria-hidden="true" />
-                        <label htmlFor="activity-search-input" className="sr-only">
+                        <label
+                            htmlFor="activity-search-input"
+                            className="sr-only"
+                        >
                             Search activity
                         </label>
                         <input
@@ -164,7 +227,10 @@ export default function Index({ role, activities, filters }) {
                                 <FaXmark />
                             </button>
                         )}
-                        <button type="submit" className="activity-search-submit">
+                        <button
+                            type="submit"
+                            className="activity-search-submit"
+                        >
                             Search
                         </button>
                     </form>
@@ -173,7 +239,8 @@ export default function Index({ role, activities, filters }) {
                 {groups.length ? (
                     <div className="activity-feed" aria-live="polite">
                         <p className="activity-result-count">
-                            Showing {activities.from}–{activities.to} of {activities.total}{" "}
+                            Showing {activities.from}–{activities.to} of{" "}
+                            {activities.total}{" "}
                             {activities.total === 1 ? "entry" : "entries"}
                         </p>
 
@@ -182,7 +249,9 @@ export default function Index({ role, activities, filters }) {
                                 <h3>{group.label}</h3>
                                 <div className="activity-list">
                                     {group.items.map((activity) => {
-                                        const Icon = categoryIcons[activity.category] ?? FaChartLine;
+                                        const Icon =
+                                            categoryIcons[activity.category] ??
+                                            FaChartLine;
                                         const content = (
                                             <>
                                                 <span
@@ -193,13 +262,46 @@ export default function Index({ role, activities, filters }) {
                                                 </span>
                                                 <span className="activity-item-copy">
                                                     <span className="activity-item-title-row">
-                                                        <strong>{activity.title}</strong>
-                                                        <time dateTime={activity.created_at}>
-                                                            {activityTime(activity.created_at)}
+                                                        <strong>
+                                                            {isGlobal &&
+                                                                activity.actor && (
+                                                                    <span className="activity-item-actor">
+                                                                        {
+                                                                            activity
+                                                                                .actor
+                                                                                .name
+                                                                        }{" "}
+                                                                        <span className="activity-item-actor-role">
+                                                                            (
+                                                                            {
+                                                                                activity
+                                                                                    .actor
+                                                                                    .role_label
+                                                                            }
+
+                                                                            )
+                                                                        </span>
+                                                                        :{" "}
+                                                                    </span>
+                                                                )}
+                                                            {activity.title}
+                                                        </strong>
+                                                        <time
+                                                            dateTime={
+                                                                activity.created_at
+                                                            }
+                                                        >
+                                                            {activityTime(
+                                                                activity.created_at,
+                                                            )}
                                                         </time>
                                                     </span>
                                                     {activity.description && (
-                                                        <span>{activity.description}</span>
+                                                        <span>
+                                                            {
+                                                                activity.description
+                                                            }
+                                                        </span>
                                                     )}
                                                 </span>
                                                 {activity.url && (
@@ -217,7 +319,10 @@ export default function Index({ role, activities, filters }) {
                                                 {content}
                                             </Link>
                                         ) : (
-                                            <article className="activity-item" key={activity.id}>
+                                            <article
+                                                className="activity-item"
+                                                key={activity.id}
+                                            >
                                                 {content}
                                             </article>
                                         );
@@ -233,16 +338,24 @@ export default function Index({ role, activities, filters }) {
                         </span>
                         <h3>No activity found</h3>
                         <p>
-                            {filters.search || filters.category !== "all"
+                            {filters.search ||
+                            filters.category !== "all" ||
+                            (filters.role ?? "all") !== "all"
                                 ? "Try changing your search or activity filter."
                                 : "Actions you complete in CareLink will appear here."}
                         </p>
-                        {(filters.search || filters.category !== "all") && (
+                        {(filters.search ||
+                            filters.category !== "all" ||
+                            (filters.role ?? "all") !== "all") && (
                             <button
                                 type="button"
                                 onClick={() => {
                                     setSearch("");
-                                    visit("all", "");
+                                    visit({
+                                        category: "all",
+                                        role: "all",
+                                        search: "",
+                                    });
                                 }}
                             >
                                 Clear filters
@@ -252,7 +365,10 @@ export default function Index({ role, activities, filters }) {
                 )}
 
                 {activities.links.length > 3 && (
-                    <nav className="activity-pagination" aria-label="Activity pages">
+                    <nav
+                        className="activity-pagination"
+                        aria-label="Activity pages"
+                    >
                         {activities.links.map((link, index) =>
                             link.url ? (
                                 <Link
@@ -260,12 +376,16 @@ export default function Index({ role, activities, filters }) {
                                     key={`${link.label}-${index}`}
                                     className={link.active ? "active" : ""}
                                     preserveScroll
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <span
                                     key={`${link.label}-${index}`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}
