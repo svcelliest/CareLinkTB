@@ -376,9 +376,6 @@ export default function Inbox({
         setNewMessageOpen(true);
     };
 
-    // Actually tears the compose window down — called directly when there's
-    // nothing to lose, or from the discard-confirm dialog once the user
-    // confirms.
     const finishCloseCompose = () => {
         // Exit out of any in-progress recipient search before the window
         // disappears, rather than leaving the field focused underneath it.
