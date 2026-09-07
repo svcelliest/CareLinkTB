@@ -10,12 +10,9 @@
 //   Laravel's Auth::attempt() as the remember flag. This issues the built-in
 //   remember-me cookie/token (not localStorage), which is the right approach
 //   for a healthcare app.
-// - Forgot-password OTP is verified server-side: this component never trusts
-//   a client-known code. A reset token is only usable after the server
-//   confirms the OTP itself.
 // - Never log username/password values to the console.
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "@inertiajs/react";
 import {
     Dialog,
@@ -27,8 +24,6 @@ import {
     TextField,
     Checkbox,
     FormControlLabel,
-    Link as MuiLink,
-    LinearProgress,
     CircularProgress,
     Chip,
 } from "@mui/material";
@@ -37,7 +32,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import HomeWorkOutlinedIcon from "@mui/icons-material/HomeWorkOutlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import MedicalServicesOutlinedIcon from "@mui/icons-material/MedicalServicesOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 
 // ─── JSON mutation helper (mirrors Screening.jsx) ────────────────
 // Forgot-password needs a plain JSON answer read back into state
@@ -73,17 +67,7 @@ async function apiRequest(method, url, payload) {
     return data;
 }
 
-const RESEND_SECONDS = 60;
-
-function pwStrengthScore(pw) {
-    let score = 0;
-    if (pw.length >= 8) score++;
-    if (/[A-Z]/.test(pw)) score++;
-    if (/[0-9]/.test(pw)) score++;
-    if (/[^A-Za-z0-9]/.test(pw)) score++;
-    return score;
-}
-const STRENGTH_COLOR = ["", "error", "warning", "info", "success"];
+const RESEND_COOLDOWN_SECONDS = 30;
 
 // ─── Role config ────────────────────────────────────────────────
 // TODO: confirm these against the real Laravel route names
@@ -143,42 +127,152 @@ export default function LoginModal({ open, onClose }) {
     // user is never trusted here; the server issues a reset token only
     // after it verifies the OTP itself.
     const [fpEmail, setFpEmail] = useState("");
-    const [fpEmailError, setFpEmailError] = useState("");
-    const [fpSending, setFpSending] = useState(false);
-
-    const [otp, setOtp] = useState(Array(6).fill(""));
-    const [otpError, setOtpError] = useState("");
-    const [otpVerifying, setOtpVerifying] = useState(false);
-    const [resendSecs, setResendSecs] = useState(0);
+    const [fpOtp, setFpOtp] = useState("");
+    const [fpPassword, setFpPassword] = useState("");
+    const [fpPasswordConfirmation, setFpPasswordConfirmation] = useState("");
     const [fpResetToken, setFpResetToken] = useState("");
-    const otpRefs = useRef([]);
+    const [fpLoading, setFpLoading] = useState(false);
+    const [fpError, setFpError] = useState("");
+    const [fpNotice, setFpNotice] = useState("");
+    const [fpResending, setFpResending] = useState(false);
+    const [fpResendCooldown, setFpResendCooldown] = useState(0);
 
-    const [newPw, setNewPw] = useState("");
-    const [confirmPw, setConfirmPw] = useState("");
-    const [newPwError, setNewPwError] = useState("");
-    const [savingPw, setSavingPw] = useState(false);
+    function resetForgotPassword() {
+        setFpEmail("");
+        setFpOtp("");
+        setFpPassword("");
+        setFpPasswordConfirmation("");
+        setFpResetToken("");
+        setFpLoading(false);
+        setFpError("");
+        setFpNotice("");
+        setFpResending(false);
+        setFpResendCooldown(0);
+    }
 
-    // Resend-OTP countdown
+    // Countdown for the "Resend code" cooldown, ticking once per second
+    // while a positive cooldown is active.
     useEffect(() => {
-        if (resendSecs <= 0) return undefined;
-        const id = setInterval(() => setResendSecs((s) => s - 1), 1000);
-        return () => clearInterval(id);
-    }, [resendSecs]);
+        if (fpResendCooldown <= 0) return;
+        const timer = setInterval(() => {
+            setFpResendCooldown((seconds) => Math.max(0, seconds - 1));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [fpResendCooldown > 0]);
 
     function resetAll() {
         setStep("role");
         setRole(null);
         loginForm.reset();
         loginForm.clearErrors();
-        setFpEmail("");
-        setFpEmailError("");
-        setOtp(Array(6).fill(""));
-        setOtpError("");
-        setFpResetToken("");
-        setNewPw("");
-        setConfirmPw("");
-        setNewPwError("");
-        setResendSecs(0);
+        resetForgotPassword();
+    }
+
+    function goToForgotPassword() {
+        resetForgotPassword();
+        setFpEmail(loginForm.data.email);
+        setStep("fp-email");
+    }
+
+    function backToLogin() {
+        resetForgotPassword();
+        setStep("login");
+    }
+
+    async function handleSendOtp(e) {
+        e.preventDefault();
+        if (!fpEmail.trim()) {
+            setFpError("Please enter your email.");
+            return;
+        }
+        setFpError("");
+        setFpLoading(true);
+        try {
+            const data = await apiRequest("POST", route("password.otp.send"), {
+                email: fpEmail,
+            });
+            setFpNotice(
+                data?.message ?? "If that email exists, a code was sent.",
+            );
+            setFpResendCooldown(RESEND_COOLDOWN_SECONDS);
+            setStep("fp-otp");
+        } catch (err) {
+            setFpError(err.message);
+        } finally {
+            setFpLoading(false);
+        }
+    }
+
+    async function handleResendOtp() {
+        if (fpResending || fpResendCooldown > 0) return;
+        setFpError("");
+        setFpResending(true);
+        try {
+            const data = await apiRequest("POST", route("password.otp.send"), {
+                email: fpEmail,
+            });
+            setFpOtp("");
+            setFpNotice(data?.message ?? "A new code was sent.");
+            setFpResendCooldown(RESEND_COOLDOWN_SECONDS);
+        } catch (err) {
+            setFpError(err.message);
+        } finally {
+            setFpResending(false);
+        }
+    }
+
+    async function handleVerifyOtp(e) {
+        e.preventDefault();
+        if (!fpOtp.trim()) {
+            setFpError("Please enter the code.");
+            return;
+        }
+        setFpError("");
+        setFpLoading(true);
+        try {
+            const data = await apiRequest(
+                "POST",
+                route("password.otp.verify"),
+                {
+                    email: fpEmail,
+                    otp: fpOtp,
+                },
+            );
+            setFpResetToken(data.reset_token);
+            setFpNotice("");
+            setStep("fp-newpw");
+        } catch (err) {
+            setFpError(err.message);
+        } finally {
+            setFpLoading(false);
+        }
+    }
+
+    async function handleResetPassword(e) {
+        e.preventDefault();
+        if (!fpPassword || !fpPasswordConfirmation) {
+            setFpError("Please fill in both password fields.");
+            return;
+        }
+        if (fpPassword !== fpPasswordConfirmation) {
+            setFpError("Passwords do not match.");
+            return;
+        }
+        setFpError("");
+        setFpLoading(true);
+        try {
+            await apiRequest("POST", route("password.reset"), {
+                email: fpEmail,
+                reset_token: fpResetToken,
+                password: fpPassword,
+                password_confirmation: fpPasswordConfirmation,
+            });
+            setStep("fp-success");
+        } catch (err) {
+            setFpError(err.message);
+        } finally {
+            setFpLoading(false);
+        }
     }
 
     function handleClose() {
@@ -210,112 +304,6 @@ export default function LoginModal({ open, onClose }) {
         }
         loginForm.post("/login", { preserveScroll: true });
     }
-
-    async function handleSendOtp(e) {
-        e.preventDefault();
-        const val = fpEmail.trim();
-        setFpEmailError("");
-        if (!val) {
-            setFpEmailError("Please enter your email.");
-            return;
-        }
-        setFpSending(true);
-        try {
-            const data = await apiRequest("POST", route("password.otp.send"), {
-                email: val,
-            });
-            setOtp(Array(6).fill(""));
-            setOtpError("");
-            setStep("fp-otp");
-            setResendSecs(RESEND_SECONDS);
-            setTimeout(() => otpRefs.current[0]?.focus(), 50);
-        } catch (err) {
-            setFpEmailError(err.message);
-        } finally {
-            setFpSending(false);
-        }
-    }
-
-    function handleOtpChange(index, value) {
-        const digit = value.replace(/[^0-9]/g, "").slice(-1);
-        const next = [...otp];
-        next[index] = digit;
-        setOtp(next);
-        if (digit && index < 5) otpRefs.current[index + 1]?.focus();
-    }
-
-    function handleOtpKeyDown(index, e) {
-        if (e.key === "Backspace" && !otp[index] && index > 0) {
-            otpRefs.current[index - 1]?.focus();
-        }
-    }
-
-    async function handleVerifyOtp() {
-        const code = otp.join("");
-        setOtpError("");
-        if (code.length < 6) {
-            setOtpError("Please enter all 6 digits.");
-            return;
-        }
-        setOtpVerifying(true);
-        try {
-            const data = await apiRequest(
-                "POST",
-                route("password.otp.verify"),
-                { email: fpEmail, otp: code },
-            );
-            setFpResetToken(data.reset_token);
-            setNewPw("");
-            setConfirmPw("");
-            setNewPwError("");
-            setStep("fp-newpw");
-        } catch (err) {
-            setOtpError(err.message);
-        } finally {
-            setOtpVerifying(false);
-        }
-    }
-
-    async function handleResendOtp() {
-        if (resendSecs > 0) return;
-        setOtp(Array(6).fill(""));
-        setOtpError("");
-        otpRefs.current[0]?.focus();
-        try {
-            await apiRequest("POST", route("password.otp.send"), {
-                email: fpEmail,
-            });
-            setResendSecs(RESEND_SECONDS);
-        } catch (err) {
-            setOtpError(err.message);
-        }
-    }
-
-    async function handleSaveNewPassword() {
-        setNewPwError("");
-        if (!newPw) return setNewPwError("Please enter a new password.");
-        if (newPw.length < 8)
-            return setNewPwError("Password must be at least 8 characters.");
-        if (newPw !== confirmPw)
-            return setNewPwError("Passwords do not match.");
-        setSavingPw(true);
-        try {
-            await apiRequest("POST", route("password.reset"), {
-                email: fpEmail,
-                reset_token: fpResetToken,
-                password: newPw,
-                password_confirmation: confirmPw,
-            });
-            setStep("fp-success");
-        } catch (err) {
-            setNewPwError(err.message);
-        } finally {
-            setSavingPw(false);
-        }
-    }
-
-    const strength = pwStrengthScore(newPw);
-    const matchState = confirmPw ? (newPw === confirmPw ? "ok" : "err") : null;
 
     return (
         <Dialog
@@ -549,15 +537,13 @@ export default function LoginModal({ open, onClose }) {
                                     </Typography>
                                 }
                             />
-                            <MuiLink
-                                component="button"
-                                type="button"
-                                variant="body2"
-                                underline="hover"
-                                onClick={() => setStep("fp-email")}
+                            <Button
+                                onClick={goToForgotPassword}
+                                size="small"
+                                sx={{ textTransform: "none" }}
                             >
                                 Forgot password?
-                            </MuiLink>
+                            </Button>
                         </Box>
 
                         <Button
@@ -589,7 +575,7 @@ export default function LoginModal({ open, onClose }) {
                         className="flex flex-col gap-1"
                     >
                         <Button
-                            onClick={() => setStep("login")}
+                            onClick={backToLogin}
                             startIcon={<ArrowBackIcon fontSize="small" />}
                             size="small"
                             sx={{
@@ -598,42 +584,41 @@ export default function LoginModal({ open, onClose }) {
                                 mb: 2,
                             }}
                         >
-                            Back to Sign In
+                            Back
                         </Button>
+
                         <Typography variant="h6" fontWeight={700}>
-                            Forgot Password
+                            Forgot password
                         </Typography>
                         <Typography
                             variant="body2"
                             color="text.secondary"
                             sx={{ mb: 3 }}
                         >
-                            Enter your email and we&apos;ll send you a 6-digit
-                            code to reset your password.
+                            Enter your email and we'll send you a one-time code.
                         </Typography>
+
                         <TextField
                             label="Email"
                             type="email"
                             placeholder="Enter email"
                             autoComplete="username"
                             value={fpEmail}
-                            onChange={(e) => {
-                                setFpEmail(e.target.value);
-                                setFpEmailError("");
-                            }}
-                            error={!!fpEmailError}
-                            helperText={fpEmailError}
+                            onChange={(e) => setFpEmail(e.target.value)}
+                            error={!!fpError}
+                            helperText={fpError}
                             fullWidth
                             margin="dense"
+                            sx={{ mb: 2 }}
                         />
+
                         <Button
                             type="submit"
                             variant="contained"
                             size="large"
-                            sx={{ mt: 2 }}
-                            disabled={fpSending}
+                            disabled={fpLoading}
                             startIcon={
-                                fpSending ? (
+                                fpLoading ? (
                                     <CircularProgress
                                         size={18}
                                         color="inherit"
@@ -641,14 +626,18 @@ export default function LoginModal({ open, onClose }) {
                                 ) : null
                             }
                         >
-                            {fpSending ? "Sending…" : "Send OTP"}
+                            {fpLoading ? "Sending…" : "Send code"}
                         </Button>
                     </Box>
                 )}
 
-                {/* ── STEP: forgot password — OTP ── */}
+                {/* ── STEP: forgot password — enter OTP ── */}
                 {step === "fp-otp" && (
-                    <Box className="flex flex-col gap-1">
+                    <Box
+                        component="form"
+                        onSubmit={handleVerifyOtp}
+                        className="flex flex-col gap-1"
+                    >
                         <Button
                             onClick={() => setStep("fp-email")}
                             startIcon={<ArrowBackIcon fontSize="small" />}
@@ -661,95 +650,37 @@ export default function LoginModal({ open, onClose }) {
                         >
                             Back
                         </Button>
+
                         <Typography variant="h6" fontWeight={700}>
-                            Enter OTP
+                            Enter code
                         </Typography>
                         <Typography
                             variant="body2"
                             color="text.secondary"
                             sx={{ mb: 3 }}
                         >
-                            We sent a 6-digit code to <strong>{fpEmail}</strong>
-                            . Enter it below.
+                            {fpNotice || `We sent a code to ${fpEmail}.`}
                         </Typography>
 
-                        <Box className="flex justify-center gap-2 mb-1">
-                            {otp.map((digit, i) => (
-                                <TextField
-                                    key={i}
-                                    inputRef={(el) => {
-                                        otpRefs.current[i] = el;
-                                    }}
-                                    value={digit}
-                                    onChange={(e) =>
-                                        handleOtpChange(i, e.target.value)
-                                    }
-                                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                    error={!!otpError}
-                                    inputProps={{
-                                        maxLength: 1,
-                                        inputMode: "numeric",
-                                        pattern: "[0-9]*",
-                                        style: {
-                                            textAlign: "center",
-                                            fontSize: "1.3rem",
-                                            fontWeight: 700,
-                                            padding: "14px 0",
-                                        },
-                                    }}
-                                    sx={{ width: 52 }}
-                                />
-                            ))}
-                        </Box>
-                        {otpError && (
-                            <Typography
-                                variant="caption"
-                                color="error"
-                                textAlign="center"
-                                sx={{ mb: 1 }}
-                            >
-                                {otpError}
-                            </Typography>
-                        )}
-
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            textAlign="center"
-                            sx={{ my: 1.5 }}
-                        >
-                            Didn&apos;t receive it?{" "}
-                            <MuiLink
-                                component="button"
-                                type="button"
-                                underline={resendSecs > 0 ? "none" : "hover"}
-                                onClick={handleResendOtp}
-                                sx={{
-                                    color:
-                                        resendSecs > 0
-                                            ? "text.disabled"
-                                            : "primary.main",
-                                    pointerEvents:
-                                        resendSecs > 0 ? "none" : "auto",
-                                }}
-                            >
-                                Resend OTP
-                            </MuiLink>
-                            {resendSecs > 0 && (
-                                <>
-                                    {" "}
-                                    in <strong>{resendSecs}</strong>s
-                                </>
-                            )}
-                        </Typography>
+                        <TextField
+                            label="One-time code"
+                            placeholder="Enter code"
+                            value={fpOtp}
+                            onChange={(e) => setFpOtp(e.target.value)}
+                            error={!!fpError}
+                            helperText={fpError}
+                            fullWidth
+                            margin="dense"
+                            sx={{ mb: 2 }}
+                        />
 
                         <Button
+                            type="submit"
                             variant="contained"
                             size="large"
-                            onClick={handleVerifyOtp}
-                            disabled={otpVerifying}
+                            disabled={fpLoading}
                             startIcon={
-                                otpVerifying ? (
+                                fpLoading ? (
                                     <CircularProgress
                                         size={18}
                                         color="inherit"
@@ -757,86 +688,84 @@ export default function LoginModal({ open, onClose }) {
                                 ) : null
                             }
                         >
-                            {otpVerifying ? "Verifying…" : "Verify OTP"}
+                            {fpLoading ? "Verifying…" : "Verify code"}
                         </Button>
+
+                        <Box
+                            className="flex items-center justify-center"
+                            sx={{ mt: 1.5 }}
+                        >
+                            <Typography variant="body2" color="text.secondary">
+                                Didn't get a code?
+                            </Typography>
+                            <Button
+                                type="button"
+                                onClick={handleResendOtp}
+                                disabled={fpResending || fpResendCooldown > 0}
+                                size="small"
+                                sx={{ textTransform: "none", ml: 0.5 }}
+                            >
+                                {fpResending
+                                    ? "Sending…"
+                                    : fpResendCooldown > 0
+                                      ? `Resend code (${fpResendCooldown}s)`
+                                      : "Resend code"}
+                            </Button>
+                        </Box>
                     </Box>
                 )}
 
                 {/* ── STEP: forgot password — new password ── */}
                 {step === "fp-newpw" && (
-                    <Box className="flex flex-col gap-1">
+                    <Box
+                        component="form"
+                        onSubmit={handleResetPassword}
+                        className="flex flex-col gap-1"
+                    >
                         <Typography variant="h6" fontWeight={700}>
-                            Set New Password
+                            Set a new password
                         </Typography>
                         <Typography
                             variant="body2"
                             color="text.secondary"
                             sx={{ mb: 3 }}
                         >
-                            Choose a strong new password for your account.
+                            Choose a new password for your account.
                         </Typography>
 
                         <TextField
-                            label="New Password"
+                            label="New password"
                             type="password"
                             placeholder="Enter new password"
                             autoComplete="new-password"
-                            value={newPw}
-                            onChange={(e) => setNewPw(e.target.value)}
+                            value={fpPassword}
+                            onChange={(e) => setFpPassword(e.target.value)}
                             fullWidth
                             margin="dense"
                         />
-                        <LinearProgress
-                            variant="determinate"
-                            value={(strength / 4) * 100}
-                            color={STRENGTH_COLOR[strength] || "inherit"}
-                            sx={{ height: 4, borderRadius: 4, my: 1 }}
-                        />
-
                         <TextField
-                            label="Confirm Password"
+                            label="Confirm password"
                             type="password"
                             placeholder="Re-enter new password"
                             autoComplete="new-password"
-                            value={confirmPw}
-                            onChange={(e) => setConfirmPw(e.target.value)}
+                            value={fpPasswordConfirmation}
+                            onChange={(e) =>
+                                setFpPasswordConfirmation(e.target.value)
+                            }
+                            error={!!fpError}
+                            helperText={fpError}
                             fullWidth
                             margin="dense"
-                            sx={{ mt: 1 }}
+                            sx={{ mb: 2 }}
                         />
-                        {matchState && (
-                            <Typography
-                                variant="caption"
-                                color={
-                                    matchState === "ok"
-                                        ? "success.main"
-                                        : "error"
-                                }
-                                sx={{ mb: 1 }}
-                            >
-                                {matchState === "ok"
-                                    ? "✓ Passwords match"
-                                    : "✗ Passwords do not match"}
-                            </Typography>
-                        )}
-                        {newPwError && (
-                            <Typography
-                                variant="caption"
-                                color="error"
-                                sx={{ mb: 1 }}
-                            >
-                                {newPwError}
-                            </Typography>
-                        )}
 
                         <Button
+                            type="submit"
                             variant="contained"
                             size="large"
-                            sx={{ mt: 2 }}
-                            onClick={handleSaveNewPassword}
-                            disabled={savingPw}
+                            disabled={fpLoading}
                             startIcon={
-                                savingPw ? (
+                                fpLoading ? (
                                     <CircularProgress
                                         size={18}
                                         color="inherit"
@@ -844,45 +773,32 @@ export default function LoginModal({ open, onClose }) {
                                 ) : null
                             }
                         >
-                            {savingPw ? "Saving…" : "Save New Password"}
+                            {fpLoading ? "Saving…" : "Save new password"}
                         </Button>
                     </Box>
                 )}
 
-                {/* ── STEP: success ── */}
+                {/* ── STEP: forgot password — success ── */}
                 {step === "fp-success" && (
-                    <Box className="flex flex-col items-center text-center gap-1">
-                        <Box
-                            className="flex items-center justify-center mb-2"
-                            sx={{
-                                width: 64,
-                                height: 64,
-                                borderRadius: "50%",
-                                bgcolor: "#eafaf1",
-                            }}
-                        >
-                            <CheckCircleOutlineIcon
-                                sx={{ color: "success.main", fontSize: 32 }}
-                            />
-                        </Box>
+                    <Box className="flex flex-col gap-1">
                         <Typography variant="h6" fontWeight={700}>
-                            Password Reset!
+                            Password updated
                         </Typography>
                         <Typography
                             variant="body2"
                             color="text.secondary"
                             sx={{ mb: 3 }}
                         >
-                            Your password has been updated successfully. You can
-                            now sign in with your new password.
+                            Your password has been changed. You can now sign in
+                            with your new password.
                         </Typography>
+
                         <Button
+                            onClick={backToLogin}
                             variant="contained"
                             size="large"
-                            fullWidth
-                            onClick={() => setStep("login")}
                         >
-                            Back to Sign In
+                            Back to sign in
                         </Button>
                     </Box>
                 )}
