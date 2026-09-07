@@ -20,6 +20,13 @@ class ActivityPresenter
             'description' => $activity->description,
             'created_at' => $activity->created_at?->toIso8601String(),
             'url' => self::url($activity, $user),
+            'actor' => $activity->relationLoaded('user') && $activity->user
+                ? [
+                    'name' => $activity->user->name,
+                    'role' => $activity->user->role,
+                    'role_label' => self::roleLabel($activity->user->role),
+                ]
+                : null,
         ];
     }
 
@@ -27,9 +34,20 @@ class ActivityPresenter
     {
         return match (true) {
             str_starts_with($type, 'account.') => 'accounts',
+            str_starts_with($type, 'program.') => 'programs',
             str_starts_with($type, 'message.') => 'messages',
             str_starts_with($type, 'security.') => 'security',
             default => 'profile',
+        };
+    }
+
+    private static function roleLabel(?string $role): string
+    {
+        return match ($role) {
+            'icm' => 'ICM',
+            'rhu' => 'RHU',
+            'provider' => 'Service Provider',
+            default => 'CareLink User',
         };
     }
 
