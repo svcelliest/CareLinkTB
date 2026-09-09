@@ -272,18 +272,12 @@ export default function Inbox({
         const handleKeyDown = (event) => {
             if (event.key !== "Escape") return;
 
-            // Highest layer claims Escape first: the discard-confirm
-            // dialog, then the recipient dropdown, then finally the
-            // compose window itself — each one only closing what's on top.
             if (confirmDiscardOpenRef.current) {
                 setConfirmDiscardOpen(false);
                 return;
             }
             if (isRecipientsOpenRef.current) return;
 
-            // Routed through the ref (rather than calling closeCompose
-            // directly) so this always sees the latest draft state instead
-            // of whatever it was when the modal first opened.
             closeComposeRef.current?.();
         };
 
@@ -298,9 +292,6 @@ export default function Inbox({
     useEffect(() => {
         isRecipientsOpenRef.current = isRecipientsOpen;
 
-        // The search term is only ever meant to filter the open dropdown;
-        // once it closes, the field switches to showing who's selected, so
-        // stale search text should never linger underneath that.
         if (!isRecipientsOpen) {
             setComposeRecipientSearch("");
         }
@@ -377,8 +368,6 @@ export default function Inbox({
     };
 
     const finishCloseCompose = () => {
-        // Exit out of any in-progress recipient search before the window
-        // disappears, rather than leaving the field focused underneath it.
         composeRecipientRef.current?.blur();
         composeForm.clearErrors();
         setIsRecipientsOpen(false);
@@ -1279,6 +1268,15 @@ export default function Inbox({
                                                 event.target.value,
                                             )
                                         }
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.key === "Enter" &&
+                                                !event.shiftKey
+                                            ) {
+                                                event.preventDefault();
+                                                sendNewMessage(event);
+                                            }
+                                        }}
                                         required
                                     />
                                 </label>
