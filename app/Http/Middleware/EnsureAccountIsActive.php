@@ -22,7 +22,7 @@ class EnsureAccountIsActive
 
             return redirect()
                 ->route('Landing')
-                ->with('error', 'Your account has been disabled. Contact an ICM coordinator for assistance.');
+                ->with('error', 'Your account has been disabled. Contact an ICM Coordinator for assistance.');
         }
 
         return $next($request);

@@ -17,51 +17,55 @@ class RhuController extends Controller
     {
         return Inertia::render('Rhu/Dashboard', [
             'user' => auth()->user(),
-            'stats' => [],
+            'stats' => [
+                'suspicious_patients' => \App\Models\Patient::where('presumptive', true)->count(),
+                'active_cases' => \App\Models\TreatmentEnrollment::where('outcome', "for_validation")->count(),
+            ],
         ]);
     }
 
     public function programs(): Response
     {
-        $programs = Program::query()
-            ->withCount([
-                'patients as form_entries_count',
-                'patients as completed_entries_count' => fn ($query) => $query->where('status', 'completed'),
-                'patients as sputum_entries_count' => fn ($query) => $query->where('form_type', 'sputum_collection'),
-                'patients as contact_tracing_entries_count' => fn ($query) => $query->where('form_type', 'contact_tracing'),
-            ])
-            ->orderBy('scheduled_at')
+        $patients = Patient::query()
+            ->whereHas('program', fn ($query) => $query->where('location_id', auth()->user()->location_id))
+            ->with('program')
+            ->orderByDesc('updated_at')
             ->get()
-            ->map(fn (Program $program) => [
-                'id' => $program->id,
-                'name' => $program->name,
-                'location' => $program->location,
-                'status' => $program->status,
-                'date_label' => $program->scheduled_at->format('M j, Y'),
-                'time_label' => $program->scheduled_at->format('g:i A'),
-                'form_entries_count' => $program->form_entries_count,
-                'completed_entries_count' => $program->completed_entries_count,
-                'sputum_entries_count' => $program->sputum_entries_count,
-                'contact_tracing_entries_count' => $program->contact_tracing_entries_count,
+            ->map(fn (Patient $patient) => [
+                'id' => $patient->id,
+                'name' => $patient->name,
+                'age' => $patient->age,
+                'sex' => $patient->sex,
+                'contact_number' => $patient->contact_number,
+                'address' => $patient->address,
+                'program_name' => $patient->program->name,
+                'status' => $patient->isPresumptive() ? 'Presumptive' : 'Normal',
             ]);
 
         return Inertia::render('Rhu/Programs/Index', [
-            'programs' => $programs,
+            'patients' => $patients,
         ]);
     }
 
     public function showProgram(Program $program): Response
     {
-        $entries = $program->patients()
+        abort_unless($program->location_id === auth()->user()->location_id, 403);
+
+        $patients = $program->patients()
+            ->with(['scdaRecord', 'contactTracingRecord'])
             ->orderByDesc('updated_at')
             ->get()
-            ->map(fn (Patient $patient) => [
+            ->map(fn(Patient $patient) => [
                 'id' => $patient->id,
-                'form_type' => $patient->form_type,
-                'patient_id' => $patient->patient_code,
-                'patient_name' => $patient->name,
+                'name' => $patient->name,
+                'date_of_birth' => $patient->date_of_birth?->format('M j, Y'),
+                'age' => $patient->age,
+                'sex' => $patient->sex,
                 'contact_number' => $patient->contact_number,
-                'status' => $patient->status,
+                'address' => $patient->address,
+                'presumptive' => $patient->presumptive,
+                'scda_status' => $patient->scdaRecord ? 'Recorded' : 'Not yet recorded',
+                'contact_tracing_status' => $patient->contactTracingRecord ? 'Recorded' : 'Not yet recorded',
                 'updated_at_label' => $patient->updated_at->diffForHumans(),
             ]);
 
@@ -69,12 +73,12 @@ class RhuController extends Controller
             'program' => [
                 'id' => $program->id,
                 'name' => $program->name,
-                'location' => $program->location,
+                'location' => $program->location?->name,
                 'status' => $program->status,
                 'date_label' => $program->scheduled_at->format('M j, Y'),
                 'time_label' => $program->scheduled_at->format('g:i A'),
-                'form_entries' => $entries,
             ],
+            'patients' => $patients,
         ]);
     }
 

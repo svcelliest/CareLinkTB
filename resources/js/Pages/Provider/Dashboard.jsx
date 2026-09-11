@@ -8,6 +8,7 @@ import {
 } from "react-icons/fa6";
 import SummaryCards from "@/Components/dashboard/SummaryCards";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import { useLivePoll } from "@/hooks/useLivePoll";
 
 const statusLabels = {
     active: "Active",
@@ -23,6 +24,13 @@ export default function Dashboard({
     recent_programs: recentPrograms,
     recent_activities: recentActivities,
 }) {
+    useLivePoll([
+        "stats",
+        "ongoing",
+        "upcoming",
+        "recent_programs",
+        "recent_activities",
+    ]);
     const cards = [
         {
             label: "Total Programs",
@@ -233,9 +241,8 @@ export default function Dashboard({
                                             <span
                                                 className={`status-pill ${program.status}`}
                                             >
-                                                {statusLabels[
-                                                    program.status
-                                                ] ?? program.status}
+                                                {statusLabels[program.status] ??
+                                                    program.status}
                                             </span>
                                         </td>
                                         <td>{program.patients_count}</td>

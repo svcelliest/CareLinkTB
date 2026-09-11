@@ -1,6 +1,7 @@
-import { Link, useForm, usePage } from "@inertiajs/react";
+import { Link, router, useForm, usePage } from "@inertiajs/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+    FaBoxArchive,
     FaCalendarDays,
     FaChevronRight,
     FaCircleCheck,
@@ -25,7 +26,7 @@ const statusLabels = {
     completed: "Completed",
 };
 
-export default function Index({ programs }) {
+export default function Index({ programs, locations }) {
     const { flash } = usePage().props;
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("all");
@@ -42,7 +43,7 @@ export default function Index({ programs }) {
         transform,
     } = useForm({
         name: "",
-        location: "",
+        location_id: "",
         date: "",
         time: "",
     });
@@ -51,8 +52,7 @@ export default function Index({ programs }) {
         const query = search.trim().toLowerCase();
 
         return programs.filter((program) => {
-            const matchesStatus =
-                status === "all" || program.status === status;
+            const matchesStatus = status === "all" || program.status === status;
             const matchesSearch =
                 !query ||
                 program.name.toLowerCase().includes(query) ||
@@ -97,13 +97,16 @@ export default function Index({ programs }) {
     const submit = (event) => {
         event.preventDefault();
 
-        // Backend expects a single `scheduled_at` datetime; the form keeps
-        // separate date/time inputs for a friendlier UX.
-        transform(({ name, location, date, time }) => ({
-            name,
-            location,
-            scheduled_at: `${date}T${time || "00:00"}`,
-        }));
+        transform(({ name, location_id, date, time }) => {
+            const localDate = new Date(`${date}T${time || "00:00"}`);
+            return {
+                name,
+                location_id,
+                scheduled_at: Number.isNaN(localDate.getTime())
+                    ? `${date}T${time || "00:00"}`
+                    : localDate.toISOString(),
+            };
+        });
 
         post(route("icm.programs.store"), {
             preserveScroll: true,
@@ -118,6 +121,25 @@ export default function Index({ programs }) {
         const date = new Date(isoString);
         if (Number.isNaN(date.getTime())) return "";
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    };
+
+    const archiveProgram = (event, program) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (
+            !window.confirm(
+                `Archive "${program.name}"? It will move to the Archives page.`,
+            )
+        ) {
+            return;
+        }
+
+        router.patch(
+            route("icm.programs.archive", program.id),
+            {},
+            { preserveScroll: true },
+        );
     };
 
     return (
@@ -160,7 +182,11 @@ export default function Index({ programs }) {
                     </button>
                 </div>
 
-                <div className="programs-tabs" role="tablist" aria-label="Program status">
+                <div
+                    className="programs-tabs"
+                    role="tablist"
+                    aria-label="Program status"
+                >
                     {filters.map((filter) => (
                         <button
                             key={filter.value}
@@ -178,48 +204,73 @@ export default function Index({ programs }) {
                 <div className="programs-list" aria-live="polite">
                     {filteredPrograms.length > 0 ? (
                         filteredPrograms.map((program) => (
-                            <Link
+                            <div
                                 key={program.id}
-                                href={route("icm.programs.show", program.id)}
                                 className={`programs-card ${program.status === "active" ? "is-active" : ""}`}
                             >
-                                <div className="programs-card-main">
-                                    <div className="programs-card-copy">
-                                        <div className="programs-card-title-row">
-                                            <h3>{program.name}</h3>
-                                            <span
-                                                className={`programs-status programs-status-${program.status}`}
-                                            >
-                                                {statusLabels[program.status] ??
-                                                    program.status}
+                                <Link
+                                    href={route(
+                                        "icm.programs.show",
+                                        program.id,
+                                    )}
+                                    className="programs-card-link"
+                                >
+                                    <div className="programs-card-main">
+                                        <div className="programs-card-copy">
+                                            <div className="programs-card-title-row">
+                                                <h3>{program.name}</h3>
+                                                <span
+                                                    className={`programs-status programs-status-${program.status}`}
+                                                >
+                                                    {statusLabels[
+                                                        program.status
+                                                    ] ?? program.status}
+                                                </span>
+                                            </div>
+                                            <p className="programs-location">
+                                                <FaLocationDot aria-hidden="true" />
+                                                <span>{program.location}</span>
+                                            </p>
+                                        </div>
+
+                                        <div className="programs-card-meta">
+                                            <span>
+                                                <FaCalendarDays aria-hidden="true" />
+                                                {formatSchedule(
+                                                    program.scheduled_at,
+                                                )}
+                                            </span>
+                                            <span>
+                                                <FaUser aria-hidden="true" />
+                                                {program.patients_count}{" "}
+                                                {program.patients_count === 1
+                                                    ? "patient"
+                                                    : "patients"}
                                             </span>
                                         </div>
-                                        <p className="programs-location">
-                                            <FaLocationDot aria-hidden="true" />
-                                            <span>{program.location}</span>
-                                        </p>
-                                    </div>
 
-                                    <div className="programs-card-meta">
-                                        <span>
-                                            <FaCalendarDays aria-hidden="true" />
-                                            {formatSchedule(program.scheduled_at)}
-                                        </span>
-                                        <span>
-                                            <FaUser aria-hidden="true" />
-                                            {program.patients_count}{" "}
-                                            {program.patients_count === 1
-                                                ? "patient"
-                                                : "patients"}
-                                        </span>
+                                        <FaChevronRight
+                                            className="programs-card-arrow"
+                                            aria-hidden="true"
+                                        />
                                     </div>
+                                </Link>
 
-                                    <FaChevronRight
-                                        className="programs-card-arrow"
-                                        aria-hidden="true"
-                                    />
-                                </div>
-                            </Link>
+                                {program.status === "completed" && (
+                                    <div className="programs-card-footer">
+                                        <button
+                                            type="button"
+                                            className="programs-archive-button"
+                                            onClick={(event) =>
+                                                archiveProgram(event, program)
+                                            }
+                                        >
+                                            <FaBoxArchive aria-hidden="true" />
+                                            Archive
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         ))
                     ) : (
                         <div className="programs-empty-state">
@@ -306,25 +357,37 @@ export default function Index({ programs }) {
                                 <label htmlFor="program-location">
                                     Location
                                 </label>
-                                <input
+                                <select
                                     id="program-location"
-                                    type="text"
-                                    value={data.location}
+                                    value={data.location_id}
                                     onChange={(event) =>
-                                        setData("location", event.target.value)
+                                        setData(
+                                            "location_id",
+                                            event.target.value,
+                                        )
                                     }
-                                    placeholder="e.g. Andagao, Kalibo, Aklan"
-                                    aria-invalid={Boolean(errors.location)}
+                                    aria-invalid={Boolean(errors.location_id)}
                                     aria-describedby={
-                                        errors.location
+                                        errors.location_id
                                             ? "program-location-error"
                                             : undefined
                                     }
-                                    autoComplete="street-address"
-                                />
-                                {errors.location && (
+                                >
+                                    <option value="">
+                                        Select a municipality
+                                    </option>
+                                    {locations.map((location) => (
+                                        <option
+                                            key={location.id}
+                                            value={location.id}
+                                        >
+                                            {location.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.location_id && (
                                     <small id="program-location-error">
-                                        {errors.location}
+                                        {errors.location_id}
                                     </small>
                                 )}
                             </div>

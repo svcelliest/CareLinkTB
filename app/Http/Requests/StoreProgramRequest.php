@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
+use Illuminate\Validation\Rule;
 
 class StoreProgramRequest extends FormRequest
 {
@@ -21,7 +22,6 @@ class StoreProgramRequest extends FormRequest
     {
         $this->merge([
             'name' => trim((string)$this->input('name')),
-            'location' => trim((string)$this->input('location')),
         ]);
     }
 
@@ -34,7 +34,10 @@ class StoreProgramRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:150'],
-            'location' => ['required', 'string', 'max:255'],
+            'location_id' => [
+                'required',
+                Rule::exists('locations', 'id')->where('level', 'municipality')
+            ],
             'scheduled_at' => ['required', 'date'],
         ];
     }

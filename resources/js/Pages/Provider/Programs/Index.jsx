@@ -25,13 +25,11 @@ const statusLabels = {
 export default function Index({ programs }) {
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("all");
-
     const filteredPrograms = useMemo(() => {
         const query = search.trim().toLowerCase();
 
         return programs.filter((program) => {
-            const matchesStatus =
-                status === "all" || program.status === status;
+            const matchesStatus = status === "all" || program.status === status;
             const matchesSearch =
                 !query ||
                 program.name.toLowerCase().includes(query) ||

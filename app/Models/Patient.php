@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Patient extends Model
 {
@@ -13,23 +15,26 @@ class Patient extends Model
     protected $fillable = [
         'program_id',
         'created_by',
-        'form_type',
         'patient_code',
         'name',
-        'age',
+        'date_of_birth',
         'sex',
         'contact_number',
         'address',
-        'status',
-        'responses',
+        'presumptive',
     ];
 
     protected function casts(): array
     {
         return [
-            'age' => 'integer',
-            'responses' => 'array',
+            'date_of_birth' => 'date',
+            'presumptive' => 'boolean',
         ];
+    }
+
+    protected function age(): Attribute
+    {
+        return Attribute::get(fn() => $this->date_of_birth?->age);
     }
 
     public function program(): BelongsTo
@@ -42,18 +47,22 @@ class Patient extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Whether this record flags a presumptive TB case, derived from the
-     * form-specific responses (sputum diagnostic result vs. contact-tracing
-     * case identification) rather than a separately stored status, so it
-     * can never drift out of sync with the underlying answers.
-     */
+    public function scdaRecord(): HasOne
+    {
+        return $this->hasOne(ScdaRecord::class);
+    }
+
+    public function contactTracingRecord(): HasOne
+    {
+        return $this->hasOne(ContactTracingRecord::class);
+    }
+
+    public function treatmentEnrollment(): HasOne
+    {
+        return $this->hasOne(TreatmentEnrollment::class);
+    }
     public function isPresumptive(): bool
     {
-        if ($this->form_type === 'sputum_collection') {
-            return ($this->responses['diagnostic_result'] ?? null) === 'positive';
-        }
-
-        return ($this->responses['tb_case_identified'] ?? null) === '1';
+        return (bool) $this->presumptive;
     }
 }

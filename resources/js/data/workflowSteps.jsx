@@ -66,7 +66,7 @@ export const workflowSteps = [
     {
         num: 7,
         title: "Program Monitoring",
-        desc: "ICM coordinators track performance across municipalities.",
+        desc: "ICM Coordinators track performance across municipalities.",
         icon: (
             <>
                 <line x1="18" y1="20" x2="18" y2="10" />

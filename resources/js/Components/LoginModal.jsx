@@ -11,10 +11,10 @@
 //   built-in remember-me token) over storing identifying info in
 //   localStorage, since localStorage is readable by any script on the page.
 //   Left as-is functionally here, but flagging for follow-up.
-// - The forgot-password flow (email -> OTP -> new password) below is wired
-//   to placeholder endpoints and mirrors the original demo's client-side
-//   OTP check. OTP verification and password reset must be verified
-//   server-side in production — never trust a client-side OTP match.
+// - The forgot-password flow (email -> OTP -> new password) below calls the
+//   real password.otp.send / password.otp.verify / password.reset routes
+//   (see PasswordOtpController). The server, not this component, owns OTP
+//   correctness and reset-token validity.
 // - Never log username/password/OTP values to the console.
 
 import { useState, useRef, useEffect } from 'react';
@@ -68,8 +68,47 @@ const ROLES = [
   },
 ];
 
-const DEMO_OTP = '123456'; // placeholder only — server must own real OTP verification
 const RESEND_SECONDS = 60;
+
+function csrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+}
+
+async function apiRequest(method, url, payload) {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-CSRF-TOKEN': csrfToken(),
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const errors = data?.errors
+      ? Object.fromEntries(
+          Object.entries(data.errors).map(([key, messages]) => [
+            key,
+            Array.isArray(messages) ? messages[0] : messages,
+          ]),
+        )
+      : {};
+    const error = new Error(data?.message ?? 'Request failed.');
+    error.errors = errors;
+    throw error;
+  }
+
+  return data;
+}
 
 function pwStrengthScore(pw) {
   let score = 0;
@@ -100,6 +139,7 @@ export default function LoginModal({ open, onClose }) {
   const [resendSecs, setResendSecs] = useState(0);
   const otpRefs = useRef([]);
 
+  const [resetToken, setResetToken] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [newPwError, setNewPwError] = useState('');
@@ -121,6 +161,7 @@ export default function LoginModal({ open, onClose }) {
     setFpEmailError('');
     setOtp(Array(6).fill(''));
     setOtpError('');
+    setResetToken('');
     setNewPw('');
     setConfirmPw('');
     setNewPwError('');
@@ -153,24 +194,27 @@ export default function LoginModal({ open, onClose }) {
     loginForm.post('/login', { preserveScroll: true });
   }
 
-  function handleSendOtp(e) {
+  async function handleSendOtp(e) {
     e.preventDefault();
     const val = fpEmail.trim();
     setFpEmailError('');
-    if (!val) return setFpEmailError('Please enter your Gmail address.');
-    if (!/^[^\s@]+@gmail\.com$/i.test(val)) {
-      return setFpEmailError('Please enter a valid Gmail address (must end in @gmail.com).');
+    if (!val) return setFpEmailError('Please enter your email address.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      return setFpEmailError('Please enter a valid email address.');
     }
     setFpSending(true);
-    // TODO: replace with a real POST to a /forgot-password/send-otp route.
-    setTimeout(() => {
-      setFpSending(false);
+    try {
+      await apiRequest('POST', route('password.otp.send'), { email: val });
       setOtp(Array(6).fill(''));
       setOtpError('');
       setStep('fp-otp');
       setResendSecs(RESEND_SECONDS);
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
-    }, 900);
+    } catch (err) {
+      setFpEmailError(err.message);
+    } finally {
+      setFpSending(false);
+    }
   }
 
   function handleOtpChange(index, value) {
@@ -187,7 +231,7 @@ export default function LoginModal({ open, onClose }) {
     }
   }
 
-  function handleVerifyOtp() {
+  async function handleVerifyOtp() {
     const code = otp.join('');
     setOtpError('');
     if (code.length < 6) {
@@ -195,40 +239,55 @@ export default function LoginModal({ open, onClose }) {
       return;
     }
     setOtpVerifying(true);
-    // TODO: replace with a real POST to a /forgot-password/verify-otp route.
-    // The server, not this component, must own OTP correctness.
-    setTimeout(() => {
+    try {
+      const data = await apiRequest('POST', route('password.otp.verify'), {
+        email: fpEmail,
+        otp: code,
+      });
+      setResetToken(data.reset_token);
+      setNewPw('');
+      setConfirmPw('');
+      setNewPwError('');
+      setStep('fp-newpw');
+    } catch (err) {
+      setOtpError(err.message);
+    } finally {
       setOtpVerifying(false);
-      if (code === DEMO_OTP) {
-        setNewPw('');
-        setConfirmPw('');
-        setNewPwError('');
-        setStep('fp-newpw');
-      } else {
-        setOtpError('Incorrect OTP. Please try again. (Demo: use 123456)');
-      }
-    }, 700);
+    }
   }
 
-  function handleResendOtp() {
+  async function handleResendOtp() {
     if (resendSecs > 0) return;
     setOtp(Array(6).fill(''));
     setOtpError('');
     otpRefs.current[0]?.focus();
-    setResendSecs(RESEND_SECONDS);
+    try {
+      await apiRequest('POST', route('password.otp.send'), { email: fpEmail });
+      setResendSecs(RESEND_SECONDS);
+    } catch (err) {
+      setOtpError(err.message);
+    }
   }
 
-  function handleSaveNewPassword() {
+  async function handleSaveNewPassword() {
     setNewPwError('');
     if (!newPw) return setNewPwError('Please enter a new password.');
     if (newPw.length < 8) return setNewPwError('Password must be at least 8 characters.');
     if (newPw !== confirmPw) return setNewPwError('Passwords do not match.');
     setSavingPw(true);
-    // TODO: replace with a real POST to a /forgot-password/reset route.
-    setTimeout(() => {
-      setSavingPw(false);
+    try {
+      await apiRequest('POST', route('password.reset'), {
+        email: fpEmail,
+        reset_token: resetToken,
+        password: newPw,
+        password_confirmation: confirmPw,
+      });
       setStep('fp-success');
-    }, 800);
+    } catch (err) {
+      setNewPwError(err.message);
+    } finally {
+      setSavingPw(false);
+    }
   }
 
   const strength = pwStrengthScore(newPw);
@@ -418,12 +477,12 @@ export default function LoginModal({ open, onClose }) {
             </Button>
             <Typography variant="h6" fontWeight={700}>Forgot Password</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Enter your Gmail address and we&apos;ll send you a 6-digit OTP to reset your password.
+              Enter your email address and we&apos;ll send you a 6-digit OTP to reset your password.
             </Typography>
             <TextField
-              label="Gmail Address"
+              label="Email Address"
               type="email"
-              placeholder="yourname@gmail.com"
+              placeholder="yourname@example.com"
               value={fpEmail}
               onChange={(e) => { setFpEmail(e.target.value); setFpEmailError(''); }}
               error={!!fpEmailError}

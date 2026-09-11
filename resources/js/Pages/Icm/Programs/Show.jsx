@@ -1,10 +1,7 @@
 import { Link } from "@inertiajs/react";
-import {
-    FaChevronLeft,
-    FaDownload,
-    FaLock,
-} from "react-icons/fa6";
+import { FaChevronLeft, FaDownload, FaLock } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import { useLivePoll } from "@/hooks/useLivePoll";
 
 const statusLabels = {
     active: "Active",
@@ -18,6 +15,8 @@ export default function Show({ program }) {
     const scheduleLabel = Number.isNaN(scheduleDate.getTime())
         ? ""
         : `${scheduleDate.toLocaleDateString()} ${scheduleDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+
+    useLivePoll(["program"]);
 
     return (
         <DashboardLayout
@@ -114,10 +113,13 @@ export default function Show({ program }) {
                                             <tr key={patient.id}>
                                                 <td>{patient.number}</td>
                                                 <td>
-                                                    <strong>{patient.name}</strong>
+                                                    <strong>
+                                                        {patient.name}
+                                                    </strong>
                                                 </td>
                                                 <td>
-                                                    {patient.age} / {patient.sex}
+                                                    {patient.age} /{" "}
+                                                    {patient.sex}
                                                 </td>
                                                 <td>{patient.address}</td>
                                                 <td>{patient.contact}</td>

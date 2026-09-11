@@ -13,9 +13,9 @@ class ActivityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_each_role_can_view_only_their_own_recent_activity(): void
+    public function test_rhu_and_provider_can_view_only_their_own_recent_activity(): void
     {
-        foreach (['icm', 'rhu', 'provider'] as $role) {
+        foreach (['rhu', 'provider'] as $role) {
             $user = User::factory()->create(['role' => $role]);
             $otherUser = User::factory()->create(['role' => $role]);
 
@@ -36,10 +36,76 @@ class ActivityTest extends TestCase
                 ->assertInertia(fn(Assert $page) => $page
                     ->component('Activity/Index')
                     ->where('role', $role)
+                    ->where('isGlobal', false)
                     ->where('filters.category', 'all')
                     ->has('activities.data', 1)
                     ->where('activities.data.0.title', "{$role} account activity"));
         }
+    }
+
+    public function test_icm_can_view_activity_from_every_account(): void
+    {
+        $icm = User::factory()->create(['role' => 'icm']);
+        $rhu = User::factory()->create(['role' => 'rhu']);
+        $provider = User::factory()->create(['role' => 'provider']);
+
+        Activity::create([
+            'user_id' => $icm->id,
+            'type' => 'security.signed_in',
+            'title' => 'Signed in to CareLink',
+        ]);
+        Activity::create([
+            'user_id' => $rhu->id,
+            'type' => 'program.patient_recorded',
+            'title' => 'Added patient record',
+        ]);
+        Activity::create([
+            'user_id' => $provider->id,
+            'type' => 'program.patient_flagged',
+            'title' => 'Flagged patient as presumptive TB',
+        ]);
+
+        // ICM's feed is global — it should surface every account's
+        // activity, not just its own, with the acting user attached to
+        // each entry.
+        $this->actingAs($icm)
+            ->get(route('icm.activity'))
+            ->assertOk()
+            ->assertInertia(fn(Assert $page) => $page
+                ->component('Activity/Index')
+                ->where('role', 'icm')
+                ->where('isGlobal', true)
+                ->has('activities.data', 3)
+                ->has('activities.data.0.actor')
+                ->has('activities.data.1.actor')
+                ->has('activities.data.2.actor'));
+
+        $this->actingAs($icm)
+            ->get(route('icm.activity', ['category' => 'programs']))
+            ->assertOk()
+            ->assertInertia(fn(Assert $page) => $page
+                ->where('filters.category', 'programs')
+                ->has('activities.data', 2));
+
+        // Filtering by role narrows the global feed down to just that
+        // role's accounts.
+        $this->actingAs($icm)
+            ->get(route('icm.activity', ['role' => 'rhu']))
+            ->assertOk()
+            ->assertInertia(fn(Assert $page) => $page
+                ->where('filters.role', 'rhu')
+                ->has('activities.data', 1)
+                ->where('activities.data.0.type', 'program.patient_recorded')
+                ->where('activities.data.0.actor.role', 'rhu'));
+
+        $this->actingAs($icm)
+            ->get(route('icm.activity', ['role' => 'provider']))
+            ->assertOk()
+            ->assertInertia(fn(Assert $page) => $page
+                ->where('filters.role', 'provider')
+                ->has('activities.data', 1)
+                ->where('activities.data.0.type', 'program.patient_flagged')
+                ->where('activities.data.0.actor.role', 'provider'));
     }
 
     public function test_activity_can_be_filtered_and_searched(): void
@@ -50,7 +116,7 @@ class ActivityTest extends TestCase
             [
                 'type' => 'message.sent',
                 'title' => 'Sent a message',
-                'description' => 'Message sent to RHU Staff.',
+                'description' => 'Message sent to RHU.',
             ],
             [
                 'type' => 'profile.updated',
@@ -87,7 +153,7 @@ class ActivityTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->actingAs($icm)->patch(route('profile.update'), [
-            'name' => 'Updated ICM Coordinator',
+            'name' => 'Updated ICM',
             'email' => $icm->email,
             'phone' => null,
             'organization' => null,

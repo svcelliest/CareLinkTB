@@ -40,11 +40,7 @@ class ProfileTest extends TestCase
             ->patch(route('profile.update'), [
                 'name' => 'Maria Santos',
                 'email' => 'maria.santos@example.test',
-                'phone' => '+63 917 555 0123',
-                'organization' => 'San Isidro Rural Health Unit',
-                'position' => 'TB Nurse Coordinator',
                 'address' => 'San Isidro, Leyte',
-                'bio' => 'Coordinates community TB referrals and follow-up care.',
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
@@ -52,8 +48,7 @@ class ProfileTest extends TestCase
         $user->refresh();
 
         $this->assertSame('Maria Santos', $user->name);
-        $this->assertSame('San Isidro Rural Health Unit', $user->organization);
-        $this->assertSame('TB Nurse Coordinator', $user->position);
+        $this->assertSame('San Isidro, Leyte', $user->address);
         $this->assertNull($user->email_verified_at);
     }
 

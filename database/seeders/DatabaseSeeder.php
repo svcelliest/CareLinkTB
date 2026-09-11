@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Location;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -16,6 +17,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (!app()->environment('local')) {
+            return;
+        }
+
+        $this->call(LocationSeeder::class);
+
+        $kalibo = Location::where('level', 'municipality')->where('name', 'Kalibo')->firstOrFail();
+
         // updateOrCreate keeps the demo credentials repeatable when the seeder
         // is run more than once on a developer's existing database.
         $icm = User::updateOrCreate(
@@ -34,6 +43,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'RHU Demo Staff',
                 'password' => 'password',
                 'role' => 'rhu',
+                'location_id' => $kalibo->id,
                 'email_verified_at' => now(),
             ],
         );

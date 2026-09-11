@@ -1,6 +1,7 @@
 import { Link } from "@inertiajs/react";
 import { FaArrowLeft, FaCircleInfo, FaDownload, FaLock } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import { useLivePoll } from "@/hooks/useLivePoll";
 
 function exportPatientsCsv(patients, programName) {
     const header = ["#", "Name", "Age", "Sex", "Address", "Contact", "Status"];
@@ -28,6 +29,8 @@ function exportPatientsCsv(patients, programName) {
     link.click();
     URL.revokeObjectURL(url);
 }
+
+useLivePoll(["program"]);
 
 export default function Completed({ program }) {
     const isUpcoming = program.status === "upcoming";
@@ -98,8 +101,8 @@ export default function Completed({ program }) {
                                 {program.time_label}
                             </p>
                             <p className="upcoming-banner-body">
-                                Registration will be available once the
-                                activity date begins.
+                                Registration will be available once the activity
+                                date begins.
                             </p>
                         </div>
                     </div>

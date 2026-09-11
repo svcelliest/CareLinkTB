@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\IcmAccountController;
+use App\Http\Controllers\IcmArchiveController;
 use App\Http\Controllers\IcmController;
-use App\Http\Controllers\IcmRecordController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -12,9 +12,13 @@ use App\Http\Controllers\RhuController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ProgramController;
+use Illuminate\Session\Store;
 
-// From welcome to landing page here
 Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
     return Inertia::render('Landing');
 })->name('Landing');
 
@@ -32,11 +36,13 @@ Route::middleware(['auth', 'active', 'role:icm'])->group(function () {
         ->name('icm.programs.export');
     Route::get('icm/programs/{program}', [ProgramController::class, 'show'])
         ->name('icm.programs.show');
-    Route::get('icm/records', [IcmRecordController::class, 'index'])->name('icm.records.index');
-    Route::get('icm/records/export', [IcmRecordController::class, 'export'])->name('icm.records.export');
-    Route::get('icm/records/{patient}', [IcmRecordController::class, 'show'])->name('icm.records.show');
-    Route::patch('icm/records/{patient}', [IcmRecordController::class, 'update'])->name('icm.records.update');
-    Route::get('icm/archives', fn () => Inertia::render('Icm/Archives/Index'))->name('icm.archives.index');
+    Route::patch('icm/programs/{program}/archive', [ProgramController::class, 'archive'])
+        ->name('icm.programs.archive');
+    Route::get('icm/archives', [IcmArchiveController::class, 'index'])->name('icm.archives.index');
+    Route::get('icm/archives/{program}/export', [IcmArchiveController::class, 'export'])
+        ->name('icm.archives.export');
+    Route::patch('icm/archives/{program}/restore', [IcmArchiveController::class, 'restore'])
+        ->name('icm.archives.restore');
     Route::get('icm/inbox', [MessageController::class, 'index'])->name('icm.inbox');
     Route::get('icm/activity', [ActivityController::class, 'index'])->name('icm.activity');
 });
@@ -55,6 +61,9 @@ Route::middleware(['auth', 'active', 'role:provider'])->group(function () {
     Route::get('provider/programs', [ProviderController::class, 'programs'])->name('provider.programs.index');
     Route::get('provider/programs/{program}', [ProviderController::class, 'showProgram'])->name('provider.programs.show');
     Route::patch('provider/programs/{program}/finish', [ProviderController::class, 'finishProgram'])->name('provider.programs.finish');
+    Route::post('provider/programs/{program}/patients', [ProviderController::class, 'storePatient'])->name('provider.programs.patients.store');
+    Route::patch('provider/programs/{program}/patients/{patient}', [ProviderController::class, 'updatePatient'])->name('provider.programs.patients.update');
+    Route::delete('provider/programs/{program}/patients/{patient}', [ProviderController::class, 'destroyPatient'])->name('provider.programs.patients.destroy');
     Route::get('provider/inbox', [MessageController::class, 'index'])->name('provider.inbox');
     Route::get('provider/activity', [ActivityController::class, 'index'])->name('provider.activity');
 });

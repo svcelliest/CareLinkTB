@@ -28,7 +28,7 @@ class IcmAccountManagementTest extends TestCase
         $this->actingAs($icm)
             ->get(route('icm.accounts.index'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn(Assert $page) => $page
                 ->component('Icm/Accounts/Index')
                 ->where('stats.total', 2)
                 ->where('stats.active', 1)
@@ -57,7 +57,7 @@ class IcmAccountManagementTest extends TestCase
                 'search' => 'Diagnostics',
             ]))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn(Assert $page) => $page
                 ->has('accounts.data', 1)
                 ->where('accounts.data.0.id', $provider->id)
                 ->where('filters.role', 'provider')
@@ -193,7 +193,7 @@ class IcmAccountManagementTest extends TestCase
         $response
             ->assertRedirect('/')
             ->assertSessionHasErrors([
-                'email' => 'This account has been disabled. Contact an ICM coordinator for assistance.',
+                'email' => 'This account has been disabled. Contact an ICM Coordinator for assistance.',
             ]);
     }
 

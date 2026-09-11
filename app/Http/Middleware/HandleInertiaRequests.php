@@ -50,34 +50,31 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
-                    'phone' => $user->phone,
-                    'organization' => $user->organization,
-                    'position' => $user->position,
                     'address' => $user->address,
-                    'bio' => $user->bio,
                     'avatar_url' => $user->avatar_path
                         ? route('profile.avatar', ['v' => $user->updated_at?->timestamp])
                         : null,
                 ] : null,
             ],
             'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
+                'success' => fn() => $request->session()->get('success'),
+                'error' => fn() => $request->session()->get('error'),
+                'openLogin' => fn() => $request->session()->get('openLogin', false)
             ],
             // Used by the shared sidebar to show an inbox badge on every dashboard page.
-            'unreadMessageCount' => fn () => $user
+            'unreadMessageCount' => fn() => $user
                 ? $user->receivedMessages()->whereNull('read_at')->count()
                 : 0,
-            'unreadNotificationCount' => fn () => $user
+            'unreadNotificationCount' => fn() => $user
                 ? $user->unreadNotifications()->count()
                 : 0,
-            'recentNotifications' => fn () => $user
+            'recentNotifications' => fn() => $user
                 ? $user->notifications()
-                    ->latest()
-                    ->limit(6)
-                    ->get()
-                    ->map(fn ($notification) => NotificationPresenter::make($notification))
-                    ->values()
+                ->latest()
+                ->limit(6)
+                ->get()
+                ->map(fn($notification) => NotificationPresenter::make($notification))
+                ->values()
                 : [],
         ];
     }

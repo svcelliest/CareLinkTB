@@ -1,7 +1,6 @@
 import {
     FaTableCellsLarge,
     FaBookOpen,
-    FaFileLines,
     FaEnvelope,
     FaChartLine,
     FaClipboardList,
@@ -15,7 +14,7 @@ export const navConfig = {
         portalInitials: "ICM",
         logoSrc: "/img/logo_img/icm_logo.png",
         logoAlt: "International Care Ministries logo",
-        roleLabel: "ICM Coordinator",
+        roleLabel: "ICM",
         roleShortLabel: "ICM",
         items: [
             {
@@ -33,7 +32,6 @@ export const navConfig = {
                 route: "icm.accounts.index",
                 Icon: FaUsersGear,
             },
-            { label: "Records", route: "icm.records.index", Icon: FaFileLines },
             {
                 label: "Archives",
                 route: "icm.archives.index",
@@ -53,7 +51,7 @@ export const navConfig = {
         portalInitials: "RHU",
         logoSrc: "/img/logo_img/rhu_logo.png",
         logoAlt: "Rural Health Unit logo",
-        roleLabel: "RHU Staff",
+        roleLabel: "RHU",
         roleShortLabel: "RHU",
         items: [
             {
@@ -62,7 +60,7 @@ export const navConfig = {
                 Icon: FaTableCellsLarge,
             },
             {
-                label: "Programs & Forms",
+                label: "Forms",
                 route: "rhu.programs.index",
                 Icon: FaClipboardList,
             },
@@ -76,10 +74,10 @@ export const navConfig = {
     },
 
     provider: {
-        portalLabel: "Diagnostic Provider",
+        portalLabel: "Service Provider",
         portalInitials: "PRV",
         logoSrc: "/img/logo_img/provider_logo.png",
-        logoAlt: "Diagnostic Provider logo",
+        logoAlt: "Service Provider logo",
         roleLabel: "Provider Staff",
         roleShortLabel: "PRV",
         items: [

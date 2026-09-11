@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, router, useForm, usePage } from "@inertiajs/react";
 import {
     FaBan,
-    FaBriefcase,
-    FaBuilding,
     FaCircleCheck,
     FaEnvelope,
     FaMagnifyingGlass,
-    FaPhone,
     FaPlus,
     FaShieldHalved,
     FaUserPlus,
@@ -15,19 +12,22 @@ import {
     FaXmark,
 } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import { useLivePoll } from "@/hooks/useLivePoll";
 
 const roleLabels = {
-    rhu: "RHU Staff",
-    provider: "Diagnostic Provider",
+    rhu: "RHU",
+    provider: "Service Provider",
 };
 
 function formatDate(value) {
-    if (!value) return "—";
+    if (!value) return "";
 
     return new Intl.DateTimeFormat(undefined, {
         month: "short",
         day: "numeric",
         year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
     }).format(new Date(value));
 }
 
@@ -41,22 +41,23 @@ function initials(name) {
         .toUpperCase();
 }
 
-export default function Index({ accounts, filters, stats }) {
+export default function Index({ accounts, filters, stats, locations }) {
     const { flash } = usePage().props;
     const [search, setSearch] = useState(filters.search ?? "");
     const [createOpen, setCreateOpen] = useState(false);
     const [statusAccount, setStatusAccount] = useState(null);
     const [statusProcessing, setStatusProcessing] = useState(false);
+    const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
     const createForm = useForm({
         name: "",
         email: "",
         role: "rhu",
-        organization: "",
-        position: "",
-        phone: "",
+        location_id: "",
         password: "",
         password_confirmation: "",
     });
+
+    useLivePoll(["accounts", "stats"]);
 
     useEffect(() => {
         if (!createOpen && !statusAccount) return undefined;
@@ -65,7 +66,11 @@ export default function Index({ accounts, filters, stats }) {
         const handleKeyDown = (event) => {
             if (event.key !== "Escape") return;
 
-            if (createOpen && !createForm.processing) setCreateOpen(false);
+            if (discardConfirmOpen) {
+                setDiscardConfirmOpen(false);
+            } else if (createOpen && !createForm.processing) {
+                requestCloseCreate();
+            }
             if (statusAccount && !statusProcessing) setStatusAccount(null);
         };
 
@@ -76,7 +81,13 @@ export default function Index({ accounts, filters, stats }) {
             document.body.style.overflow = previousOverflow;
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [createOpen, statusAccount, statusProcessing, createForm.processing]);
+    }, [
+        createOpen,
+        statusAccount,
+        statusProcessing,
+        createForm.processing,
+        discardConfirmOpen,
+    ]);
 
     const visit = (next = {}) => {
         const nextRole = next.role ?? filters.role;
@@ -115,6 +126,33 @@ export default function Index({ accounts, filters, stats }) {
         });
     };
 
+    const createFormHasInput = () =>
+        createForm.data.name.trim() !== "" ||
+        createForm.data.email.trim() !== "" ||
+        createForm.data.password !== "" ||
+        createForm.data.password_confirmation !== "" ||
+        createForm.data.role !== "rhu" ||
+        createForm.data.location_id !== "";
+
+    const closeCreate = () => {
+        createForm.reset();
+        createForm.setData("role", "rhu");
+        createForm.clearErrors();
+        setDiscardConfirmOpen(false);
+        setCreateOpen(false);
+    };
+
+    const requestCloseCreate = () => {
+        if (createForm.processing) return;
+
+        if (createFormHasInput()) {
+            setDiscardConfirmOpen(true);
+            return;
+        }
+
+        closeCreate();
+    };
+
     const updateStatus = () => {
         if (!statusAccount) return;
 
@@ -136,7 +174,10 @@ export default function Index({ accounts, filters, stats }) {
             title="Account Management"
             contentClassName="dash-content-accounts"
         >
-            <section className="accounts-page" aria-labelledby="accounts-heading">
+            <section
+                className="accounts-page"
+                aria-labelledby="accounts-heading"
+            >
                 {flash?.success && (
                     <div className="accounts-toast" role="status">
                         <FaCircleCheck aria-hidden="true" />
@@ -150,14 +191,21 @@ export default function Index({ accounts, filters, stats }) {
                             <FaShieldHalved />
                         </span>
                         <div>
-                            <h2 id="accounts-heading">Manage partner accounts</h2>
+                            <h2 id="accounts-heading">
+                                Manage partner accounts
+                            </h2>
                             <p>
-                                Create sign-in access for RHU and diagnostic provider
-                                staff, or disable access when it is no longer needed.
+                                Create sign-in access for RHU and diagnostic
+                                provider staff, or disable access when it is no
+                                longer needed.
                             </p>
                         </div>
                     </div>
-                    <button type="button" className="accounts-create" onClick={openCreate}>
+                    <button
+                        type="button"
+                        className="accounts-create"
+                        onClick={openCreate}
+                    >
                         <FaUserPlus aria-hidden="true" />
                         Create account
                     </button>
@@ -165,7 +213,10 @@ export default function Index({ accounts, filters, stats }) {
 
                 <div className="accounts-stats" aria-label="Account summary">
                     <article>
-                        <span className="accounts-stat-icon total" aria-hidden="true">
+                        <span
+                            className="accounts-stat-icon total"
+                            aria-hidden="true"
+                        >
                             <FaUsers />
                         </span>
                         <div>
@@ -174,7 +225,10 @@ export default function Index({ accounts, filters, stats }) {
                         </div>
                     </article>
                     <article>
-                        <span className="accounts-stat-icon active" aria-hidden="true">
+                        <span
+                            className="accounts-stat-icon active"
+                            aria-hidden="true"
+                        >
                             <FaCircleCheck />
                         </span>
                         <div>
@@ -183,7 +237,10 @@ export default function Index({ accounts, filters, stats }) {
                         </div>
                     </article>
                     <article>
-                        <span className="accounts-stat-icon disabled" aria-hidden="true">
+                        <span
+                            className="accounts-stat-icon disabled"
+                            aria-hidden="true"
+                        >
                             <FaBan />
                         </span>
                         <div>
@@ -213,7 +270,9 @@ export default function Index({ accounts, filters, stats }) {
                                 placeholder="Search name, email, or organization"
                                 value={search}
                                 maxLength={100}
-                                onChange={(event) => setSearch(event.target.value)}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
                             />
                             {search && (
                                 <button
@@ -228,7 +287,10 @@ export default function Index({ accounts, filters, stats }) {
                                     <FaXmark />
                                 </button>
                             )}
-                            <button type="submit" className="accounts-search-submit">
+                            <button
+                                type="submit"
+                                className="accounts-search-submit"
+                            >
                                 Search
                             </button>
                         </form>
@@ -238,18 +300,26 @@ export default function Index({ accounts, filters, stats }) {
                                 <span>Account type</span>
                                 <select
                                     value={filters.role}
-                                    onChange={(event) => visit({ role: event.target.value })}
+                                    onChange={(event) =>
+                                        visit({ role: event.target.value })
+                                    }
                                 >
-                                    <option value="all">All account types</option>
-                                    <option value="rhu">RHU Staff</option>
-                                    <option value="provider">Diagnostic Provider</option>
+                                    <option value="all">
+                                        All account types
+                                    </option>
+                                    <option value="rhu">RHU</option>
+                                    <option value="provider">
+                                        Service Provider
+                                    </option>
                                 </select>
                             </label>
                             <label>
                                 <span>Status</span>
                                 <select
                                     value={filters.status}
-                                    onChange={(event) => visit({ status: event.target.value })}
+                                    onChange={(event) =>
+                                        visit({ status: event.target.value })
+                                    }
                                 >
                                     <option value="all">All statuses</option>
                                     <option value="active">Active</option>
@@ -267,10 +337,9 @@ export default function Index({ accounts, filters, stats }) {
                                         <tr>
                                             <th>Account</th>
                                             <th>Type</th>
-                                            <th>Organization</th>
                                             <th>Status</th>
-                                            <th>Created</th>
-                                            <th><span className="sr-only">Actions</span></th>
+                                            <th>Last Online</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -279,48 +348,72 @@ export default function Index({ accounts, filters, stats }) {
                                                 <td>
                                                     <div className="accounts-identity">
                                                         <span aria-hidden="true">
-                                                            {initials(account.name)}
+                                                            {initials(
+                                                                account.name,
+                                                            )}
                                                         </span>
                                                         <div>
-                                                            <strong>{account.name}</strong>
-                                                            <small>{account.email}</small>
-                                                            <code>{account.account_id}</code>
+                                                            <strong>
+                                                                {account.name}
+                                                            </strong>
+                                                            <small>
+                                                                {account.email}
+                                                            </small>
+                                                            <code>
+                                                                {
+                                                                    account.account_id
+                                                                }
+                                                            </code>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span className={`accounts-role ${account.role}`}>
-                                                        {roleLabels[account.role]}
+                                                    <span
+                                                        className={`accounts-role ${account.role}`}
+                                                    >
+                                                        {
+                                                            roleLabels[
+                                                                account.role
+                                                            ]
+                                                        }
                                                     </span>
-                                                </td>
-                                                <td>
-                                                    <div className="accounts-organization">
-                                                        <strong>{account.organization || "Not provided"}</strong>
-                                                        {account.position && <span>{account.position}</span>}
-                                                    </div>
                                                 </td>
                                                 <td>
                                                     <span
                                                         className={`accounts-status ${
-                                                            account.is_active ? "active" : "disabled"
+                                                            account.is_active
+                                                                ? "active"
+                                                                : "disabled"
                                                         }`}
                                                     >
                                                         <i aria-hidden="true" />
-                                                        {account.is_active ? "Active" : "Disabled"}
+                                                        {account.is_active
+                                                            ? "Active"
+                                                            : "Disabled"}
                                                     </span>
                                                 </td>
                                                 <td className="accounts-date">
-                                                    {formatDate(account.created_at)}
+                                                    {formatDate(
+                                                        account.last_login_at,
+                                                    )}
                                                 </td>
                                                 <td>
                                                     <button
                                                         type="button"
                                                         className={`accounts-status-action ${
-                                                            account.is_active ? "disable" : "enable"
+                                                            account.is_active
+                                                                ? "disable"
+                                                                : "enable"
                                                         }`}
-                                                        onClick={() => setStatusAccount(account)}
+                                                        onClick={() =>
+                                                            setStatusAccount(
+                                                                account,
+                                                            )
+                                                        }
                                                     >
-                                                        {account.is_active ? "Disable" : "Enable"}
+                                                        {account.is_active
+                                                            ? "Disable"
+                                                            : "Enable"}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -334,44 +427,64 @@ export default function Index({ accounts, filters, stats }) {
                                     <article key={account.id}>
                                         <div className="accounts-mobile-heading">
                                             <div className="accounts-identity">
-                                                <span aria-hidden="true">{initials(account.name)}</span>
+                                                <span aria-hidden="true">
+                                                    {initials(account.name)}
+                                                </span>
                                                 <div>
-                                                    <strong>{account.name}</strong>
-                                                    <small>{account.email}</small>
-                                                    <code>{account.account_id}</code>
+                                                    <strong>
+                                                        {account.name}
+                                                    </strong>
+                                                    <small>
+                                                        {account.email}
+                                                    </small>
+                                                    <code>
+                                                        {account.account_id}
+                                                    </code>
                                                 </div>
                                             </div>
                                             <span
                                                 className={`accounts-status ${
-                                                    account.is_active ? "active" : "disabled"
+                                                    account.is_active
+                                                        ? "active"
+                                                        : "disabled"
                                                 }`}
                                             >
                                                 <i aria-hidden="true" />
-                                                {account.is_active ? "Active" : "Disabled"}
+                                                {account.is_active
+                                                    ? "Active"
+                                                    : "Disabled"}
                                             </span>
                                         </div>
                                         <dl>
                                             <div>
                                                 <dt>Account type</dt>
-                                                <dd>{roleLabels[account.role]}</dd>
+                                                <dd>
+                                                    {roleLabels[account.role]}
+                                                </dd>
                                             </div>
                                             <div>
-                                                <dt>Organization</dt>
-                                                <dd>{account.organization || "Not provided"}</dd>
-                                            </div>
-                                            <div>
-                                                <dt>Created</dt>
-                                                <dd>{formatDate(account.created_at)}</dd>
+                                                <dt>Last Online</dt>
+                                                <dd>
+                                                    {formatDate(
+                                                        account.last_login_at,
+                                                    )}
+                                                </dd>
                                             </div>
                                         </dl>
                                         <button
                                             type="button"
                                             className={`accounts-status-action ${
-                                                account.is_active ? "disable" : "enable"
+                                                account.is_active
+                                                    ? "disable"
+                                                    : "enable"
                                             }`}
-                                            onClick={() => setStatusAccount(account)}
+                                            onClick={() =>
+                                                setStatusAccount(account)
+                                            }
                                         >
-                                            {account.is_active ? "Disable account" : "Enable account"}
+                                            {account.is_active
+                                                ? "Disable account"
+                                                : "Enable account"}
                                         </button>
                                     </article>
                                 ))}
@@ -379,14 +492,20 @@ export default function Index({ accounts, filters, stats }) {
                         </>
                     ) : (
                         <div className="accounts-empty">
-                            <span aria-hidden="true"><FaUsers /></span>
+                            <span aria-hidden="true">
+                                <FaUsers />
+                            </span>
                             <h3>No accounts found</h3>
                             <p>
-                                {filters.search || filters.role !== "all" || filters.status !== "all"
+                                {filters.search ||
+                                filters.role !== "all" ||
+                                filters.status !== "all"
                                     ? "Try changing your search or account filters."
                                     : "Create an RHU or provider account to get started."}
                             </p>
-                            {filters.search || filters.role !== "all" || filters.status !== "all" ? (
+                            {filters.search ||
+                            filters.role !== "all" ||
+                            filters.status !== "all" ? (
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -405,7 +524,10 @@ export default function Index({ accounts, filters, stats }) {
                     )}
 
                     {accounts.links.length > 3 && (
-                        <nav className="accounts-pagination" aria-label="Account pages">
+                        <nav
+                            className="accounts-pagination"
+                            aria-label="Account pages"
+                        >
                             {accounts.links.map((link, index) =>
                                 link.url ? (
                                     <Link
@@ -413,12 +535,16 @@ export default function Index({ accounts, filters, stats }) {
                                         key={`${link.label}-${index}`}
                                         className={link.active ? "active" : ""}
                                         preserveScroll
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                        dangerouslySetInnerHTML={{
+                                            __html: link.label,
+                                        }}
                                     />
                                 ) : (
                                     <span
                                         key={`${link.label}-${index}`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                        dangerouslySetInnerHTML={{
+                                            __html: link.label,
+                                        }}
                                     />
                                 ),
                             )}
@@ -432,8 +558,8 @@ export default function Index({ accounts, filters, stats }) {
                     className="accounts-modal-overlay"
                     role="presentation"
                     onMouseDown={(event) => {
-                        if (event.target === event.currentTarget && !createForm.processing) {
-                            setCreateOpen(false);
+                        if (event.target === event.currentTarget) {
+                            requestCloseCreate();
                         }
                     }}
                 >
@@ -445,19 +571,27 @@ export default function Index({ accounts, filters, stats }) {
                     >
                         <header>
                             <div>
-                                <span className="accounts-modal-icon" aria-hidden="true">
+                                <span
+                                    className="accounts-modal-icon"
+                                    aria-hidden="true"
+                                >
                                     <FaUserPlus />
                                 </span>
                                 <div>
-                                    <h2 id="create-account-title">Create partner account</h2>
-                                    <p>Provide the staff member’s access and organization details.</p>
+                                    <h2 id="create-account-title">
+                                        Create partner account
+                                    </h2>
+                                    <p>
+                                        Provide the staff member’s access and
+                                        organization details.
+                                    </p>
                                 </div>
                             </div>
                             <button
                                 type="button"
                                 aria-label="Close create account form"
                                 disabled={createForm.processing}
-                                onClick={() => setCreateOpen(false)}
+                                onClick={requestCloseCreate}
                             >
                                 <FaXmark />
                             </button>
@@ -469,7 +603,7 @@ export default function Index({ accounts, filters, stats }) {
                                     <h3>Account access</h3>
                                     <div className="accounts-form-grid">
                                         <AccountField
-                                            label="Full name"
+                                            label="Account Name"
                                             error={createForm.errors.name}
                                             wide
                                         >
@@ -477,55 +611,126 @@ export default function Index({ accounts, filters, stats }) {
                                                 autoFocus
                                                 value={createForm.data.name}
                                                 onChange={(event) =>
-                                                    createForm.setData("name", event.target.value)
+                                                    createForm.setData(
+                                                        "name",
+                                                        event.target.value,
+                                                    )
                                                 }
-                                                placeholder="e.g. Maria Santos"
+                                                placeholder="e.g. RHU Kalibo"
                                                 autoComplete="name"
                                             />
                                         </AccountField>
-                                        <AccountField label="Account type" error={createForm.errors.role}>
+                                        <AccountField
+                                            label="Account Role"
+                                            error={createForm.errors.role}
+                                        >
                                             <select
                                                 value={createForm.data.role}
-                                                onChange={(event) =>
-                                                    createForm.setData("role", event.target.value)
-                                                }
+                                                onChange={(event) => {
+                                                    const nextRole =
+                                                        event.target.value;
+                                                    createForm.setData({
+                                                        ...createForm.data,
+                                                        role: nextRole,
+                                                        location_id:
+                                                            nextRole === "rhu"
+                                                                ? createForm
+                                                                      .data
+                                                                      .location_id
+                                                                : "",
+                                                    });
+                                                }}
                                             >
-                                                <option value="rhu">RHU Staff</option>
-                                                <option value="provider">Diagnostic Provider</option>
+                                                <option value="rhu">RHU</option>
+                                                <option value="provider">
+                                                    Service Provider
+                                                </option>
                                             </select>
                                         </AccountField>
-                                        <AccountField label="Email address" error={createForm.errors.email}>
+                                        <AccountField
+                                            label="Assigned Location"
+                                            error={
+                                                createForm.errors.location_id
+                                            }
+                                        >
+                                            <select
+                                                value={
+                                                    createForm.data.location_id
+                                                }
+                                                disabled={
+                                                    createForm.data.role !==
+                                                    "rhu"
+                                                }
+                                                onChange={(event) =>
+                                                    createForm.setData(
+                                                        "location_id",
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            >
+                                                <option value="">
+                                                    Select a municipality
+                                                </option>
+                                                {locations.map((location) => (
+                                                    <option
+                                                        key={location.id}
+                                                        value={location.id}
+                                                    >
+                                                        {location.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </AccountField>
+                                        <AccountField
+                                            label="Email Address"
+                                            error={createForm.errors.email}
+                                        >
                                             <input
                                                 type="email"
+                                                name="new-account-email"
                                                 value={createForm.data.email}
                                                 onChange={(event) =>
-                                                    createForm.setData("email", event.target.value.toLowerCase())
+                                                    createForm.setData(
+                                                        "email",
+                                                        event.target.value.toLowerCase(),
+                                                    )
                                                 }
                                                 placeholder="name@example.com"
                                                 autoComplete="email"
                                             />
                                         </AccountField>
                                         <AccountField
-                                            label="Temporary password"
+                                            label="Temporary Password"
                                             error={createForm.errors.password}
                                         >
                                             <input
                                                 type="password"
+                                                name="new-account-password"
                                                 value={createForm.data.password}
                                                 onChange={(event) =>
-                                                    createForm.setData("password", event.target.value)
+                                                    createForm.setData(
+                                                        "password",
+                                                        event.target.value,
+                                                    )
                                                 }
                                                 placeholder="At least 8 characters"
                                                 autoComplete="new-password"
                                             />
                                         </AccountField>
                                         <AccountField
-                                            label="Confirm password"
-                                            error={createForm.errors.password_confirmation}
+                                            label="Confirm Password"
+                                            error={
+                                                createForm.errors
+                                                    .password_confirmation
+                                            }
                                         >
                                             <input
                                                 type="password"
-                                                value={createForm.data.password_confirmation}
+                                                name="new-account-password-confirmation"
+                                                value={
+                                                    createForm.data
+                                                        .password_confirmation
+                                                }
                                                 onChange={(event) =>
                                                     createForm.setData(
                                                         "password_confirmation",
@@ -539,60 +744,13 @@ export default function Index({ accounts, filters, stats }) {
                                     </div>
                                 </section>
 
-                                <section className="accounts-form-section">
-                                    <h3>Organization details</h3>
-                                    <div className="accounts-form-grid">
-                                        <AccountField
-                                            label="Organization"
-                                            error={createForm.errors.organization}
-                                            icon={FaBuilding}
-                                            wide
-                                        >
-                                            <input
-                                                value={createForm.data.organization}
-                                                onChange={(event) =>
-                                                    createForm.setData("organization", event.target.value)
-                                                }
-                                                placeholder="RHU, clinic, laboratory, or hospital"
-                                                autoComplete="organization"
-                                            />
-                                        </AccountField>
-                                        <AccountField
-                                            label="Position"
-                                            error={createForm.errors.position}
-                                            icon={FaBriefcase}
-                                        >
-                                            <input
-                                                value={createForm.data.position}
-                                                onChange={(event) =>
-                                                    createForm.setData("position", event.target.value)
-                                                }
-                                                placeholder="e.g. TB Nurse"
-                                                autoComplete="organization-title"
-                                            />
-                                        </AccountField>
-                                        <AccountField
-                                            label="Phone number"
-                                            error={createForm.errors.phone}
-                                            icon={FaPhone}
-                                        >
-                                            <input
-                                                value={createForm.data.phone}
-                                                onChange={(event) =>
-                                                    createForm.setData("phone", event.target.value)
-                                                }
-                                                placeholder="e.g. 0917 123 4567"
-                                                autoComplete="tel"
-                                            />
-                                        </AccountField>
-                                    </div>
-                                </section>
-
                                 <div className="accounts-password-note">
                                     <FaEnvelope aria-hidden="true" />
                                     <p>
-                                        Share the email address and temporary password securely with
-                                        the staff member. They can change the password from their profile.
+                                        Share the email address and temporary
+                                        password securely with the staff member.
+                                        They can change the password from their
+                                        profile.
                                     </p>
                                 </div>
                             </div>
@@ -601,15 +759,65 @@ export default function Index({ accounts, filters, stats }) {
                                     type="button"
                                     className="secondary"
                                     disabled={createForm.processing}
-                                    onClick={() => setCreateOpen(false)}
+                                    onClick={requestCloseCreate}
                                 >
                                     Cancel
                                 </button>
-                                <button type="submit" className="primary" disabled={createForm.processing}>
-                                    {createForm.processing ? "Creating…" : "Create account"}
+                                <button
+                                    type="submit"
+                                    className="primary"
+                                    disabled={createForm.processing}
+                                >
+                                    {createForm.processing
+                                        ? "Creating…"
+                                        : "Create account"}
                                 </button>
                             </footer>
                         </form>
+                    </section>
+                </div>
+            )}
+
+            {discardConfirmOpen && (
+                <div
+                    className="accounts-modal-overlay"
+                    role="presentation"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) {
+                            setDiscardConfirmOpen(false);
+                        }
+                    }}
+                >
+                    <section
+                        className="accounts-status-modal"
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="discard-account-title"
+                        aria-describedby="discard-account-description"
+                    >
+                        <span className="danger" aria-hidden="true">
+                            <FaBan />
+                        </span>
+                        <h2 id="discard-account-title">Discard new account?</h2>
+                        <p id="discard-account-description">
+                            The details you’ve entered for this account will be
+                            lost.
+                        </p>
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() => setDiscardConfirmOpen(false)}
+                            >
+                                Keep editing
+                            </button>
+                            <button
+                                type="button"
+                                className="danger"
+                                onClick={closeCreate}
+                            >
+                                Discard
+                            </button>
+                        </div>
                     </section>
                 </div>
             )}
@@ -619,7 +827,10 @@ export default function Index({ accounts, filters, stats }) {
                     className="accounts-modal-overlay"
                     role="presentation"
                     onMouseDown={(event) => {
-                        if (event.target === event.currentTarget && !statusProcessing) {
+                        if (
+                            event.target === event.currentTarget &&
+                            !statusProcessing
+                        ) {
                             setStatusAccount(null);
                         }
                     }}
@@ -632,13 +843,21 @@ export default function Index({ accounts, filters, stats }) {
                         aria-describedby="account-status-description"
                     >
                         <span
-                            className={statusAccount.is_active ? "danger" : "success"}
+                            className={
+                                statusAccount.is_active ? "danger" : "success"
+                            }
                             aria-hidden="true"
                         >
-                            {statusAccount.is_active ? <FaBan /> : <FaCircleCheck />}
+                            {statusAccount.is_active ? (
+                                <FaBan />
+                            ) : (
+                                <FaCircleCheck />
+                            )}
                         </span>
                         <h2 id="account-status-title">
-                            {statusAccount.is_active ? "Disable account?" : "Enable account?"}
+                            {statusAccount.is_active
+                                ? "Disable account?"
+                                : "Enable account?"}
                         </h2>
                         <p id="account-status-description">
                             {statusAccount.is_active
@@ -655,7 +874,11 @@ export default function Index({ accounts, filters, stats }) {
                             </button>
                             <button
                                 type="button"
-                                className={statusAccount.is_active ? "danger" : "success"}
+                                className={
+                                    statusAccount.is_active
+                                        ? "danger"
+                                        : "success"
+                                }
                                 disabled={statusProcessing}
                                 onClick={updateStatus}
                             >

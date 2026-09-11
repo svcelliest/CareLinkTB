@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Head } from "@inertiajs/react";
+import { useLivePoll } from "@/hooks/useLivePoll";
 import Sidebar from "@/Components/dashboard/Sidebar";
 import Header from "@/Components/dashboard/Header";
 import { navConfig } from "@/data/navConfig.jsx";
@@ -12,6 +13,11 @@ export default function DashboardLayout({
 }) {
     const config = navConfig[role];
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    useLivePoll([
+        "unreadMessageCount",
+        "unreadNotificationCount",
+        "recentNotifications",
+    ]);
 
     useEffect(() => {
         if (!sidebarOpen) {
@@ -65,9 +71,7 @@ export default function DashboardLayout({
                         sidebarOpen={sidebarOpen}
                         onMenuToggle={() => setSidebarOpen((open) => !open)}
                     />
-                    <main
-                        className={`dash-content ${contentClassName}`.trim()}
-                    >
+                    <main className={`dash-content ${contentClassName}`.trim()}>
                         {children}
                     </main>
                 </div>

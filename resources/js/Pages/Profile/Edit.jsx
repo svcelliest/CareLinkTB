@@ -14,7 +14,7 @@ const roleDetails = {
     },
     provider: {
         code: "PRV",
-        label: "Diagnostic Provider (PRV)",
+        label: "Service Provider (PRV)",
     },
 };
 
@@ -44,7 +44,6 @@ export default function Edit({ role }) {
         name: user.name ?? "",
         email: user.email ?? "",
         address: user.address ?? "",
-        phone: user.phone ?? "",
     });
     const passwordForm = useForm({
         current_password: "",
@@ -102,7 +101,8 @@ export default function Edit({ role }) {
                 onError: () => setAvatarPreview(null),
                 onFinish: () => {
                     setAvatarProcessing(false);
-                    if (avatarInputRef.current) avatarInputRef.current.value = "";
+                    if (avatarInputRef.current)
+                        avatarInputRef.current.value = "";
                 },
             },
         );
@@ -140,10 +140,16 @@ export default function Edit({ role }) {
                     </div>
                 )}
 
-                <section className="account-profile-identity" aria-label="Account identity">
+                <section
+                    className="account-profile-identity"
+                    aria-label="Account identity"
+                >
                     <div className="account-profile-avatar">
                         {avatarPreview || user.avatar_url ? (
-                            <img src={avatarPreview || user.avatar_url} alt="" />
+                            <img
+                                src={avatarPreview || user.avatar_url}
+                                alt=""
+                            />
                         ) : (
                             <span>{initials(user.name)}</span>
                         )}
@@ -170,7 +176,10 @@ export default function Edit({ role }) {
                     </div>
                 </section>
 
-                <section className="account-profile-card" aria-labelledby="account-information-title">
+                <section
+                    className="account-profile-card"
+                    aria-labelledby="account-information-title"
+                >
                     <h2 id="account-information-title">Account Information</h2>
 
                     <form onSubmit={saveDetails}>
@@ -179,7 +188,9 @@ export default function Edit({ role }) {
                                 label="Full Name"
                                 name="name"
                                 value={detailsForm.data.name}
-                                onChange={(value) => detailsForm.setData("name", value)}
+                                onChange={(value) =>
+                                    detailsForm.setData("name", value)
+                                }
                                 error={detailsForm.errors.name}
                                 required
                             />
@@ -199,7 +210,9 @@ export default function Edit({ role }) {
                                 label="Barangay"
                                 name="address"
                                 value={detailsForm.data.address}
-                                onChange={(value) => detailsForm.setData("address", value)}
+                                onChange={(value) =>
+                                    detailsForm.setData("address", value)
+                                }
                                 error={detailsForm.errors.address}
                                 placeholder="Enter barangay and municipality"
                             />
@@ -208,33 +221,39 @@ export default function Edit({ role }) {
                                 name="email"
                                 type="email"
                                 value={detailsForm.data.email}
-                                onChange={(value) => detailsForm.setData("email", value)}
+                                onChange={(value) =>
+                                    detailsForm.setData("email", value)
+                                }
                                 error={detailsForm.errors.email}
                                 required
-                            />
-                            <AccountField
-                                label="Contact Number"
-                                name="phone"
-                                type="tel"
-                                value={detailsForm.data.phone}
-                                onChange={(value) => detailsForm.setData("phone", value)}
-                                error={detailsForm.errors.phone}
-                                placeholder="e.g. +63 912 345 6789"
                             />
                         </div>
 
                         <div className="account-profile-save-row">
-                            <button type="submit" disabled={detailsForm.processing}>
-                                {detailsForm.processing ? "Saving..." : "Save Changes"}
+                            <button
+                                type="submit"
+                                disabled={detailsForm.processing}
+                            >
+                                {detailsForm.processing
+                                    ? "Saving..."
+                                    : "Save Changes"}
                             </button>
                         </div>
                     </form>
                 </section>
 
-                <section className="account-security-card" aria-labelledby="password-security-title">
+                <section
+                    className="account-security-card"
+                    aria-labelledby="password-security-title"
+                >
                     <div>
-                        <h2 id="password-security-title">Password &amp; Security</h2>
-                        <p>Update your account password regularly to keep your CareLink TB account secure.</p>
+                        <h2 id="password-security-title">
+                            Password &amp; Security
+                        </h2>
+                        <p>
+                            Update your account password regularly to keep your
+                            CareLink TB account secure.
+                        </p>
                     </div>
                     <button type="button" onClick={() => setPasswordOpen(true)}>
                         Change Password
@@ -247,7 +266,8 @@ export default function Edit({ role }) {
                     className="account-password-overlay"
                     role="presentation"
                     onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) closePasswordModal();
+                        if (event.target === event.currentTarget)
+                            closePasswordModal();
                     }}
                 >
                     <section
@@ -258,8 +278,13 @@ export default function Edit({ role }) {
                     >
                         <div className="account-password-modal-header">
                             <div>
-                                <h2 id="change-password-title">Change Password</h2>
-                                <p>Enter your current password before choosing a new one.</p>
+                                <h2 id="change-password-title">
+                                    Change Password
+                                </h2>
+                                <p>
+                                    Enter your current password before choosing
+                                    a new one.
+                                </p>
                             </div>
                             <button
                                 type="button"
@@ -278,7 +303,10 @@ export default function Edit({ role }) {
                                 type="password"
                                 value={passwordForm.data.current_password}
                                 onChange={(value) =>
-                                    passwordForm.setData("current_password", value)
+                                    passwordForm.setData(
+                                        "current_password",
+                                        value,
+                                    )
                                 }
                                 error={passwordForm.errors.current_password}
                                 autoComplete="current-password"
@@ -290,7 +318,9 @@ export default function Edit({ role }) {
                                 name="password"
                                 type="password"
                                 value={passwordForm.data.password}
-                                onChange={(value) => passwordForm.setData("password", value)}
+                                onChange={(value) =>
+                                    passwordForm.setData("password", value)
+                                }
                                 error={passwordForm.errors.password}
                                 autoComplete="new-password"
                                 required
@@ -301,9 +331,14 @@ export default function Edit({ role }) {
                                 type="password"
                                 value={passwordForm.data.password_confirmation}
                                 onChange={(value) =>
-                                    passwordForm.setData("password_confirmation", value)
+                                    passwordForm.setData(
+                                        "password_confirmation",
+                                        value,
+                                    )
                                 }
-                                error={passwordForm.errors.password_confirmation}
+                                error={
+                                    passwordForm.errors.password_confirmation
+                                }
                                 autoComplete="new-password"
                                 required
                             />
@@ -316,8 +351,13 @@ export default function Edit({ role }) {
                                 >
                                     Cancel
                                 </button>
-                                <button type="submit" disabled={passwordForm.processing}>
-                                    {passwordForm.processing ? "Updating..." : "Update Password"}
+                                <button
+                                    type="submit"
+                                    disabled={passwordForm.processing}
+                                >
+                                    {passwordForm.processing
+                                        ? "Updating..."
+                                        : "Update Password"}
                                 </button>
                             </div>
                         </form>
@@ -354,7 +394,11 @@ function AccountField({
                 type={type}
                 name={name}
                 value={value ?? ""}
-                onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+                onChange={
+                    onChange
+                        ? (event) => onChange(event.target.value)
+                        : undefined
+                }
                 placeholder={placeholder}
                 autoComplete={autoComplete}
                 required={required}
