@@ -1,13 +1,19 @@
-import { Link } from "@inertiajs/react";
+import { Deferred, Link } from "@inertiajs/react";
 import { useMemo, useState } from "react";
-import {
-    FaCalendarDays,
-    FaChevronRight,
-    FaLocationDot,
-    FaMagnifyingGlass,
-    FaUsers,
-} from "react-icons/fa6";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import { ProgramCardSkeleton } from "@/Components/provider/Skeleton";
+import "../../../../css/app/12d-provider-dashboard.css";
+
+/**
+ * Provider program list. Search and tab filtering run against the programs
+ * already delivered with the page, exactly as the reference does; the list
+ * itself is a deferred prop so it shows skeleton cards while it loads.
+ */
 
 const tabs = [
     { value: "all", label: "All" },
@@ -22,16 +28,18 @@ const statusLabels = {
     completed: "Completed",
 };
 
-export default function Index({ programs }) {
-    const [search, setSearch] = useState("");
-    const [status, setStatus] = useState("all");
+/**
+ * Icon sizes are set here rather than in CSS because MUI sizes its icons off
+ * `font-size`; each value tracks the label it sits beside in `.prog-*`.
+ * Colour is left to `currentColor`, which the surrounding rules already set.
+ */
 
-    const filteredPrograms = useMemo(() => {
+function ProgramList({ programs, search, status }) {
+    const filtered = useMemo(() => {
         const query = search.trim().toLowerCase();
 
         return programs.filter((program) => {
-            const matchesStatus =
-                status === "all" || program.status === status;
+            const matchesStatus = status === "all" || program.status === status;
             const matchesSearch =
                 !query ||
                 program.name.toLowerCase().includes(query) ||
@@ -40,6 +48,53 @@ export default function Index({ programs }) {
             return matchesStatus && matchesSearch;
         });
     }, [programs, search, status]);
+
+    if (filtered.length === 0) {
+        return <div className="prog-list-empty">No programs found.</div>;
+    }
+
+    return filtered.map((program) => (
+        <Link
+            key={program.id}
+            href={route("provider.programs.show", program.id)}
+            className={`prog-card ${program.status === "active" ? "active-prog" : ""}`}
+        >
+            <div className="prog-info">
+                <div className="prog-name-row">
+                    <span className="prog-name">{program.name}</span>
+                    <span className={`prog-badge ${program.status}`}>
+                        {statusLabels[program.status] ?? program.status}
+                    </span>
+                </div>
+                <div className="prog-loc-row">
+                    <LocationOnOutlinedIcon sx={{ fontSize: 14 }} />
+                    {program.location}
+                </div>
+            </div>
+
+            <div className="prog-meta-row">
+                <div className="prog-meta-item">
+                    <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />
+                    <span>
+                        {program.iso_date_label} {program.time_label}
+                    </span>
+                </div>
+                <div className="prog-meta-item">
+                    <PeopleAltOutlinedIcon sx={{ fontSize: 15 }} />
+                    <span>{program.patients_count} Registered</span>
+                </div>
+            </div>
+
+            <div className="prog-arrow">
+                <ChevronRightRoundedIcon sx={{ fontSize: 20 }} />
+            </div>
+        </Link>
+    ));
+}
+
+export default function Index({ programs }) {
+    const [search, setSearch] = useState("");
+    const [status, setStatus] = useState("all");
 
     return (
         <DashboardLayout
@@ -50,13 +105,14 @@ export default function Index({ programs }) {
             <div className="prog-page">
                 <div className="page-toolbar">
                     <label className="toolbar-search">
-                        <FaMagnifyingGlass aria-hidden="true" />
+                        {/* sized and coloured by `.toolbar-search svg` */}
+                        <SearchRoundedIcon />
                         <span className="sr-only">Search programs</span>
                         <input
-                            type="search"
+                            type="text"
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Search by program or location"
+                            placeholder="Search programs..."
                         />
                     </label>
                 </div>
@@ -75,61 +131,16 @@ export default function Index({ programs }) {
                 </div>
 
                 <div className="prog-list">
-                    {filteredPrograms.length > 0 ? (
-                        filteredPrograms.map((program) => (
-                            <Link
-                                key={program.id}
-                                href={route(
-                                    "provider.programs.show",
-                                    program.id,
-                                )}
-                                className={`prog-card ${program.status === "active" ? "active-prog" : ""}`}
-                            >
-                                <div className="prog-info">
-                                    <div className="prog-name-row">
-                                        <span className="prog-name">
-                                            {program.name}
-                                        </span>
-                                        <span
-                                            className={`prog-badge ${program.status}`}
-                                        >
-                                            {statusLabels[program.status] ??
-                                                program.status}
-                                        </span>
-                                    </div>
-                                    <p className="prog-loc-row">
-                                        <FaLocationDot aria-hidden="true" />
-                                        <span>{program.location}</span>
-                                    </p>
-                                </div>
-
-                                <div className="prog-meta-row">
-                                    <span className="prog-meta-item">
-                                        <FaCalendarDays aria-hidden="true" />
-                                        <span>
-                                            {program.date_label} ·{" "}
-                                            {program.time_label}
-                                        </span>
-                                    </span>
-                                    <span className="prog-meta-item">
-                                        <FaUsers aria-hidden="true" />
-                                        <span>
-                                            {program.patients_count}{" "}
-                                            {program.patients_count === 1
-                                                ? "patient"
-                                                : "patients"}
-                                        </span>
-                                    </span>
-                                </div>
-
-                                <span className="prog-arrow">
-                                    <FaChevronRight aria-hidden="true" />
-                                </span>
-                            </Link>
-                        ))
-                    ) : (
-                        <p>No programs found.</p>
-                    )}
+                    <Deferred
+                        data="programs"
+                        fallback={<ProgramCardSkeleton />}
+                    >
+                        <ProgramList
+                            programs={programs}
+                            search={search}
+                            status={status}
+                        />
+                    </Deferred>
                 </div>
             </div>
         </DashboardLayout>

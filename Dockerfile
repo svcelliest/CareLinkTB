@@ -43,6 +43,10 @@ FROM php-base AS development
 ENV APP_ENV=local \
     APP_DEBUG=true
 
+# `artisan serve` and `queue:work` both run on the CLI SAPI, where OPcache is
+# off by default. See the file for why that matters so much on a bind mount.
+COPY docker/opcache-dev.ini /usr/local/etc/php/conf.d/zz-opcache-dev.ini
+
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]
 
 FROM node:22-alpine AS frontend-build

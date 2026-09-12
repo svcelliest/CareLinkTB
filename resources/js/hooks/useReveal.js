@@ -3,7 +3,7 @@ import { useEffect } from "react";
 export function useReveal() {
     useEffect(() => {
         const els = document.querySelectorAll(".reveal");
-        if (!("INtersectionObserver" in window)) {
+        if (!("IntersectionObserver" in window)) {
             els.forEach((el) => el.classList.add("visible"));
             return;
         }

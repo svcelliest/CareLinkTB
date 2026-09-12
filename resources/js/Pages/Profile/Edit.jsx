@@ -1,20 +1,41 @@
 import { useEffect, useRef, useState } from "react";
 import { router, useForm, usePage } from "@inertiajs/react";
-import { FaCheck, FaPen, FaXmark } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import "../../../css/app/12e-activity-reference.css";
 
+/**
+ * Account page in the reference portal's layout: identity header card,
+ * two-column Account Information grid, and a Password & Security card that
+ * opens the change-password dialog.
+ *
+ * All of the existing behaviour is retained — avatar upload with preview and
+ * server-side errors, profile patch with per-field validation, and the
+ * password update flow with its current-password check. The reference mockup
+ * has no error or busy states; those are kept because the backend produces
+ * them.
+ */
+
+/**
+ * `addressPlaceholder` names what the Address field means for each role: a
+ * coordinator records an office, a provider a diagnostic facility. An RHU has
+ * neither — its address is derived from the municipality on the account (see
+ * `derivedAddress` below), so its placeholder is never shown.
+ */
 const roleDetails = {
     icm: {
         code: "ICM",
         label: "International Care Ministries (ICM)",
+        addressPlaceholder: "Enter Office Location",
     },
     rhu: {
         code: "RHU",
         label: "Rural Health Unit (RHU)",
+        addressPlaceholder: "Enter Location",
     },
     provider: {
         code: "PRV",
         label: "Diagnostic Provider (PRV)",
+        addressPlaceholder: "Enter Facility Location",
     },
 };
 
@@ -28,9 +49,64 @@ function initials(name) {
         .toUpperCase();
 }
 
-export default function Edit({ role }) {
+function InfoField({
+    label,
+    name,
+    type = "text",
+    value,
+    onChange,
+    error,
+    placeholder,
+    autoComplete,
+    required = false,
+    readOnly = false,
+    hint,
+}) {
+    return (
+        <div className="account-info-row">
+            <label className="account-info-label" htmlFor={`account-${name}`}>
+                {label}
+            </label>
+            <input
+                id={`account-${name}`}
+                className="account-info-input"
+                type={type}
+                name={name}
+                value={value ?? ""}
+                onChange={
+                    onChange
+                        ? (event) => onChange(event.target.value)
+                        : undefined
+                }
+                placeholder={placeholder}
+                autoComplete={autoComplete}
+                required={required}
+                readOnly={readOnly}
+                aria-invalid={Boolean(error)}
+                aria-describedby={hint ? `account-${name}-hint` : undefined}
+            />
+            {error && <small className="account-info-error">{error}</small>}
+            {hint && !error && (
+                <small className="account-info-hint" id={`account-${name}-hint`}>
+                    {hint}
+                </small>
+            )}
+        </div>
+    );
+}
+
+export default function Edit({
+    role,
+    derivedAddress = null,
+    assignedAddress = null,
+}) {
     const { auth, flash, errors = {} } = usePage().props;
     const user = auth.user;
+    // An RHU's address comes from the municipality on its account, so the
+    // field is shown filled and locked. The server writes the same value on
+    // save, so this is a display of the stored address rather than a
+    // divergence from it.
+    const addressIsDerived = derivedAddress !== null;
     const roleDetail = roleDetails[role] ?? {
         code: role?.toUpperCase() ?? "USER",
         label: role ?? "CareLink User",
@@ -43,7 +119,10 @@ export default function Edit({ role }) {
     const detailsForm = useForm({
         name: user.name ?? "",
         email: user.email ?? "",
-        address: user.address ?? "",
+        // Falls back to the municipality the account was created with, so a
+        // provider opening this page for the first time already sees it
+        // rather than being asked to name it again.
+        address: user.address || assignedAddress || "",
         phone: user.phone ?? "",
     });
     const passwordForm = useForm({
@@ -102,7 +181,9 @@ export default function Edit({ role }) {
                 onError: () => setAvatarPreview(null),
                 onFinish: () => {
                     setAvatarProcessing(false);
-                    if (avatarInputRef.current) avatarInputRef.current.value = "";
+                    if (avatarInputRef.current) {
+                        avatarInputRef.current.value = "";
+                    }
                 },
             },
         );
@@ -126,202 +207,315 @@ export default function Edit({ role }) {
         });
     };
 
+    const passwordError =
+        passwordForm.errors.current_password ||
+        passwordForm.errors.password ||
+        passwordForm.errors.password_confirmation;
+
     return (
         <DashboardLayout
             role={role}
-            title="My Account"
+            title="Profile"
             contentClassName="dash-content-profile account-profile-content"
         >
-            <div className="account-profile-page">
+            <div className="account-page">
+                <div className="page-title-block">My Profile</div>
+
                 {flash?.success && (
                     <div className="account-profile-toast" role="status">
-                        <FaCheck aria-hidden="true" />
                         {flash.success}
                     </div>
                 )}
 
-                <section className="account-profile-identity" aria-label="Account identity">
-                    <div className="account-profile-avatar">
-                        {avatarPreview || user.avatar_url ? (
-                            <img src={avatarPreview || user.avatar_url} alt="" />
-                        ) : (
-                            <span>{initials(user.name)}</span>
-                        )}
-                        <input
-                            ref={avatarInputRef}
-                            id="account-avatar"
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            onChange={uploadAvatar}
-                            disabled={avatarProcessing}
+                <div className="account-header-card">
+                    <div className="account-profile-row">
+                        <div className="account-avatar-wrap">
+                            <div className="account-avatar">
+                                {avatarPreview || user.avatar_url ? (
+                                    <img
+                                        src={avatarPreview || user.avatar_url}
+                                        alt=""
+                                    />
+                                ) : (
+                                    <span className="account-avatar-initials">
+                                        {initials(user.name)}
+                                    </span>
+                                )}
+                            </div>
+                            <label
+                                htmlFor="account-avatar-upload"
+                                className={`account-avatar-edit ${avatarProcessing ? "uploading" : ""}`}
+                                aria-label="Change profile photo"
+                                title="Change profile photo"
+                            >
+                                {avatarProcessing ? (
+                                    <span
+                                        className="action-spinner"
+                                        aria-hidden="true"
+                                    />
+                                ) : (
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <path d="M12 20h9" />
+                                        <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                    </svg>
+                                )}
+                            </label>
+                            <input
+                                ref={avatarInputRef}
+                                id="account-avatar-upload"
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                onChange={uploadAvatar}
+                                disabled={avatarProcessing}
+                                style={{ display: "none" }}
+                            />
+                        </div>
+                        <div className="account-name-block">
+                            <div className="account-display-name">
+                                {user.name}
+                            </div>
+                            <div className="account-display-role">
+                                <span className="account-role-badge">
+                                    {roleDetail.code}
+                                </span>
+                                {roleDetail.label}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form className="account-info-card" onSubmit={saveDetails}>
+                    <div className="account-info-title">
+                        Account Information
+                    </div>
+                    <div className="account-info-grid">
+                        <InfoField
+                            label="Full Name"
+                            name="name"
+                            value={detailsForm.data.name}
+                            onChange={(value) =>
+                                detailsForm.setData("name", value)
+                            }
+                            error={detailsForm.errors.name}
+                            placeholder="Enter your name"
+                            required
                         />
-                        <label
-                            htmlFor="account-avatar"
-                            className={avatarProcessing ? "uploading" : ""}
-                            aria-label="Change profile photo"
-                            title="Change profile photo"
+                        <InfoField
+                            label="User ID"
+                            name="account_id"
+                            value={user.account_id}
+                            readOnly
+                        />
+                        <InfoField
+                            label="Role"
+                            name="role"
+                            value={roleDetail.label}
+                            readOnly
+                        />
+                        <InfoField
+                            label="Address"
+                            name="address"
+                            value={
+                                addressIsDerived
+                                    ? derivedAddress
+                                    : detailsForm.data.address
+                            }
+                            onChange={
+                                addressIsDerived
+                                    ? undefined
+                                    : (value) =>
+                                          detailsForm.setData("address", value)
+                            }
+                            error={detailsForm.errors.address}
+                            placeholder={roleDetail.addressPlaceholder}
+                            readOnly={addressIsDerived}
+                            hint={
+                                addressIsDerived
+                                    ? "Set from the municipality assigned to this RHU account."
+                                    : undefined
+                            }
+                        />
+                        <InfoField
+                            label="Email Address"
+                            name="email"
+                            type="email"
+                            value={detailsForm.data.email}
+                            onChange={(value) =>
+                                detailsForm.setData("email", value)
+                            }
+                            error={detailsForm.errors.email}
+                            required
+                        />
+                        <InfoField
+                            label="Contact Number"
+                            name="phone"
+                            type="tel"
+                            value={detailsForm.data.phone}
+                            onChange={(value) =>
+                                detailsForm.setData("phone", value)
+                            }
+                            error={detailsForm.errors.phone}
+                            placeholder="e.g. +63 912 345 6789"
+                        />
+                    </div>
+                    <div className="account-btn-row">
+                        <button
+                            type="submit"
+                            className="account-save-btn"
+                            disabled={detailsForm.processing}
                         >
-                            <FaPen aria-hidden="true" />
-                        </label>
+                            {detailsForm.processing && (
+                                <span
+                                    className="action-spinner"
+                                    aria-hidden="true"
+                                />
+                            )}
+                            Save Changes
+                        </button>
                     </div>
-                    <div className="account-profile-identity-copy">
-                        <h2>{user.name}</h2>
-                        <span>{roleDetail.code}</span>
-                    </div>
-                </section>
+                </form>
 
-                <section className="account-profile-card" aria-labelledby="account-information-title">
-                    <h2 id="account-information-title">Account Information</h2>
-
-                    <form onSubmit={saveDetails}>
-                        <div className="account-profile-fields">
-                            <AccountField
-                                label="Full Name"
-                                name="name"
-                                value={detailsForm.data.name}
-                                onChange={(value) => detailsForm.setData("name", value)}
-                                error={detailsForm.errors.name}
-                                required
-                            />
-                            <AccountField
-                                label="User ID"
-                                name="account_id"
-                                value={user.account_id}
-                                disabled
-                            />
-                            <AccountField
-                                label="Role"
-                                name="role"
-                                value={roleDetail.label}
-                                disabled
-                            />
-                            <AccountField
-                                label="Barangay"
-                                name="address"
-                                value={detailsForm.data.address}
-                                onChange={(value) => detailsForm.setData("address", value)}
-                                error={detailsForm.errors.address}
-                                placeholder="Enter barangay and municipality"
-                            />
-                            <AccountField
-                                label="Email Address"
-                                name="email"
-                                type="email"
-                                value={detailsForm.data.email}
-                                onChange={(value) => detailsForm.setData("email", value)}
-                                error={detailsForm.errors.email}
-                                required
-                            />
-                            <AccountField
-                                label="Contact Number"
-                                name="phone"
-                                type="tel"
-                                value={detailsForm.data.phone}
-                                onChange={(value) => detailsForm.setData("phone", value)}
-                                error={detailsForm.errors.phone}
-                                placeholder="e.g. +63 912 345 6789"
-                            />
+                <div className="change-password-card">
+                    <div className="change-password-header">
+                        <div>
+                            <div className="change-password-title">
+                                Password &amp; Security
+                            </div>
+                            <div className="change-password-sub">
+                                Update your account password regularly to keep
+                                your CareLink TB account secure.
+                            </div>
                         </div>
-
-                        <div className="account-profile-save-row">
-                            <button type="submit" disabled={detailsForm.processing}>
-                                {detailsForm.processing ? "Saving..." : "Save Changes"}
-                            </button>
-                        </div>
-                    </form>
-                </section>
-
-                <section className="account-security-card" aria-labelledby="password-security-title">
-                    <div>
-                        <h2 id="password-security-title">Password &amp; Security</h2>
-                        <p>Update your account password regularly to keep your CareLink TB account secure.</p>
+                        <button
+                            type="button"
+                            className="change-password-btn"
+                            onClick={() => setPasswordOpen(true)}
+                        >
+                            Change Password
+                        </button>
                     </div>
-                    <button type="button" onClick={() => setPasswordOpen(true)}>
-                        Change Password
-                    </button>
-                </section>
+                </div>
             </div>
 
             {passwordOpen && (
                 <div
-                    className="account-password-overlay"
+                    className="change-password-modal-overlay visible"
                     role="presentation"
                     onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) closePasswordModal();
+                        if (event.target === event.currentTarget) {
+                            closePasswordModal();
+                        }
                     }}
                 >
-                    <section
-                        className="account-password-modal"
+                    <form
+                        className="change-password-modal"
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="change-password-title"
+                        onSubmit={savePassword}
                     >
-                        <div className="account-password-modal-header">
-                            <div>
-                                <h2 id="change-password-title">Change Password</h2>
-                                <p>Enter your current password before choosing a new one.</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={closePasswordModal}
-                                disabled={passwordForm.processing}
-                                aria-label="Close password dialog"
-                            >
-                                <FaXmark />
-                            </button>
-                        </div>
+                        <h3 id="change-password-title">Change Password</h3>
+                        <p>
+                            Enter your current password and choose a new
+                            password for your account.
+                        </p>
 
-                        <form onSubmit={savePassword}>
-                            <AccountField
-                                label="Current Password"
-                                name="current_password"
+                        <div className="cp-field">
+                            <label htmlFor="cp-current-password">
+                                Current Password
+                            </label>
+                            <input
+                                id="cp-current-password"
                                 type="password"
-                                value={passwordForm.data.current_password}
-                                onChange={(value) =>
-                                    passwordForm.setData("current_password", value)
-                                }
-                                error={passwordForm.errors.current_password}
                                 autoComplete="current-password"
+                                placeholder="Enter current password"
+                                value={passwordForm.data.current_password}
+                                onChange={(event) =>
+                                    passwordForm.setData(
+                                        "current_password",
+                                        event.target.value,
+                                    )
+                                }
                                 required
                                 autoFocus
                             />
-                            <AccountField
-                                label="New Password"
-                                name="password"
+                        </div>
+                        <div className="cp-field">
+                            <label htmlFor="cp-new-password">
+                                New Password
+                            </label>
+                            <input
+                                id="cp-new-password"
                                 type="password"
+                                autoComplete="new-password"
+                                placeholder="At least 8 characters"
                                 value={passwordForm.data.password}
-                                onChange={(value) => passwordForm.setData("password", value)}
-                                error={passwordForm.errors.password}
-                                autoComplete="new-password"
-                                required
-                            />
-                            <AccountField
-                                label="Confirm New Password"
-                                name="password_confirmation"
-                                type="password"
-                                value={passwordForm.data.password_confirmation}
-                                onChange={(value) =>
-                                    passwordForm.setData("password_confirmation", value)
+                                onChange={(event) =>
+                                    passwordForm.setData(
+                                        "password",
+                                        event.target.value,
+                                    )
                                 }
-                                error={passwordForm.errors.password_confirmation}
-                                autoComplete="new-password"
                                 required
                             />
+                        </div>
+                        <div className="cp-field">
+                            <label htmlFor="cp-confirm-password">
+                                Confirm New Password
+                            </label>
+                            <input
+                                id="cp-confirm-password"
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder="Re-enter new password"
+                                value={passwordForm.data.password_confirmation}
+                                onChange={(event) =>
+                                    passwordForm.setData(
+                                        "password_confirmation",
+                                        event.target.value,
+                                    )
+                                }
+                                required
+                            />
+                        </div>
 
-                            <div className="account-password-actions">
-                                <button
-                                    type="button"
-                                    onClick={closePasswordModal}
-                                    disabled={passwordForm.processing}
-                                >
-                                    Cancel
-                                </button>
-                                <button type="submit" disabled={passwordForm.processing}>
-                                    {passwordForm.processing ? "Updating..." : "Update Password"}
-                                </button>
+                        {passwordError && (
+                            <div className="change-password-error visible">
+                                {passwordError}
                             </div>
-                        </form>
-                    </section>
+                        )}
+
+                        <div className="change-password-actions">
+                            <button
+                                type="button"
+                                className="cp-cancel-btn"
+                                onClick={closePasswordModal}
+                                disabled={passwordForm.processing}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="cp-save-btn"
+                                disabled={passwordForm.processing}
+                            >
+                                {passwordForm.processing && (
+                                    <span
+                                        className="action-spinner"
+                                        aria-hidden="true"
+                                    />
+                                )}
+                                Save Password
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
 
@@ -331,38 +525,5 @@ export default function Edit({ role }) {
                 </div>
             )}
         </DashboardLayout>
-    );
-}
-
-function AccountField({
-    label,
-    name,
-    type = "text",
-    value,
-    onChange,
-    error,
-    placeholder,
-    autoComplete,
-    required = false,
-    disabled = false,
-    autoFocus = false,
-}) {
-    return (
-        <label className="account-profile-field">
-            <span>{label}</span>
-            <input
-                type={type}
-                name={name}
-                value={value ?? ""}
-                onChange={onChange ? (event) => onChange(event.target.value) : undefined}
-                placeholder={placeholder}
-                autoComplete={autoComplete}
-                required={required}
-                disabled={disabled}
-                autoFocus={autoFocus}
-                aria-invalid={Boolean(error)}
-            />
-            {error && <small>{error}</small>}
-        </label>
     );
 }

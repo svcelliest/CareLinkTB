@@ -14,6 +14,7 @@ import {
     FaXmark,
 } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import { useToast } from "@/Components/ui/Toast";
 
 const roleLabels = {
     icm: "ICM",
@@ -105,6 +106,7 @@ export default function Inbox({
     messageSearchResults = [],
 }) {
     const { auth } = usePage().props;
+    const toast = useToast();
     const currentUser = auth.user;
     const [search, setSearch] = useState("");
     const [highlightMessageId, setHighlightMessageId] = useState(null);
@@ -495,7 +497,12 @@ export default function Inbox({
             preserveScroll: true,
             showProgress: false,
             forceFormData: true,
-            onSuccess: () => resetReply("body", "attachments"),
+            onSuccess: () => {
+                resetReply("body", "attachments");
+                toast.success("Message sent successfully");
+            },
+            onError: () =>
+                toast.error("Message could not be sent. Please try again."),
         });
     };
 
@@ -531,11 +538,14 @@ export default function Inbox({
         composeForm.post(route("messages.store"), {
             preserveScroll: true,
             forceFormData: true,
+            onError: () =>
+                toast.error("Message could not be sent. Please try again."),
             onSuccess: () => {
                 composeForm.reset();
                 setComposeSubject("");
                 setIsRecipientsOpen(false);
                 setNewMessageOpen(false);
+                toast.success("Message sent successfully");
                 router.get(
                     route(`${role}.inbox`),
                     { contact: firstRecipientId },

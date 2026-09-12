@@ -1,17 +1,20 @@
 import {
     FaTableCellsLarge,
     FaBookOpen,
-    FaFileLines,
     FaEnvelope,
     FaChartLine,
-    FaClipboardList,
     FaUsersGear,
     FaBoxArchive,
+    FaHeartPulse,
+    FaHouseChimneyMedical,
+    FaCircleCheck,
+    FaCommentDots,
+    FaClockRotateLeft,
 } from "react-icons/fa6";
 
 export const navConfig = {
     icm: {
-        portalLabel: "International Care Ministries",
+        portalLabel: "ICM Portal",
         portalInitials: "ICM",
         logoSrc: "/img/logo_img/icm_logo.png",
         logoAlt: "International Care Ministries logo",
@@ -29,11 +32,15 @@ export const navConfig = {
                 Icon: FaBookOpen,
             },
             {
+                label: "Contact Tracing",
+                route: "icm.contact-tracing.index",
+                Icon: FaHouseChimneyMedical,
+            },
+            {
                 label: "Accounts",
                 route: "icm.accounts.index",
                 Icon: FaUsersGear,
             },
-            { label: "Records", route: "icm.records.index", Icon: FaFileLines },
             {
                 label: "Archives",
                 route: "icm.archives.index",
@@ -48,8 +55,11 @@ export const navConfig = {
         ],
     },
 
+    // Order and labels follow the RHU portal reference exactly. There is no
+    // Programs entry: programs stay ICM-owned, and the RHU reaches them
+    // through the Patient Tracker's program filter.
     rhu: {
-        portalLabel: "Rural Health Unit",
+        portalLabel: "RHU Portal",
         portalInitials: "RHU",
         logoSrc: "/img/logo_img/rhu_logo.png",
         logoAlt: "Rural Health Unit logo",
@@ -62,21 +72,31 @@ export const navConfig = {
                 Icon: FaTableCellsLarge,
             },
             {
-                label: "Programs & Forms",
-                route: "rhu.programs.index",
-                Icon: FaClipboardList,
+                label: "Patient Monitoring",
+                route: "rhu.treatment.index",
+                Icon: FaHeartPulse,
+            },
+            {
+                label: "Patient Tracker",
+                route: "rhu.tracker.index",
+                Icon: FaCircleCheck,
             },
             { label: "Inbox", route: "rhu.inbox", Icon: FaEnvelope },
             {
-                label: "Recent Activity",
+                label: "SMS Log",
+                route: "rhu.sms.index",
+                Icon: FaCommentDots,
+            },
+            {
+                label: "Recent Activities",
                 route: "rhu.activity",
-                Icon: FaChartLine,
+                Icon: FaClockRotateLeft,
             },
         ],
     },
 
     provider: {
-        portalLabel: "Diagnostic Provider",
+        portalLabel: "Provider Portal",
         portalInitials: "PRV",
         logoSrc: "/img/logo_img/provider_logo.png",
         logoAlt: "Diagnostic Provider logo",

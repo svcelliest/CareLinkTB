@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\AklanAddresses;
+use App\Support\RhuScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -75,6 +77,7 @@ class IcmAccountManagementTest extends TestCase
                 'name' => 'Juan Dela Cruz',
                 'email' => 'juan@example.com',
                 'role' => 'rhu',
+                'municipality' => 'Kalibo',
                 'organization' => 'Tupi Rural Health Unit',
                 'position' => 'TB Nurse',
                 'phone' => '0917 123 4567',
@@ -89,6 +92,7 @@ class IcmAccountManagementTest extends TestCase
         $account = User::query()->where('email', 'juan@example.com')->firstOrFail();
 
         $this->assertSame('rhu', $account->role);
+        $this->assertSame('Kalibo', $account->municipality);
         $this->assertSame('Tupi Rural Health Unit', $account->organization);
         $this->assertNotNull($account->email_verified_at);
         $this->assertTrue(Hash::check('temporary-password', $account->password));
@@ -97,6 +101,96 @@ class IcmAccountManagementTest extends TestCase
             'type' => 'account.created',
             'subject_id' => $account->id,
         ]);
+    }
+
+    public function test_rhu_accounts_require_a_municipality_from_the_shared_address_dataset(): void
+    {
+        $icm = User::factory()->create(['role' => 'icm']);
+
+        $payload = [
+            'name' => 'RHU Staff',
+            'email' => 'rhu.staff@example.com',
+            'role' => 'rhu',
+            'password' => 'temporary-password',
+            'password_confirmation' => 'temporary-password',
+        ];
+
+        $this->actingAs($icm)
+            ->from(route('icm.accounts.index'))
+            ->post(route('icm.accounts.store'), $payload)
+            ->assertSessionHasErrors('municipality');
+
+        $this->actingAs($icm)
+            ->from(route('icm.accounts.index'))
+            ->post(route('icm.accounts.store'), [
+                ...$payload,
+                // Out of the programme's coverage, so not in the dataset.
+                'municipality' => 'Tapaz',
+            ])
+            ->assertSessionHasErrors('municipality');
+
+        $this->assertDatabaseMissing('users', ['email' => 'rhu.staff@example.com']);
+    }
+
+    public function test_provider_accounts_may_be_assigned_a_municipality(): void
+    {
+        $icm = User::factory()->create(['role' => 'icm']);
+
+        $this->actingAs($icm)
+            ->from(route('icm.accounts.index'))
+            ->post(route('icm.accounts.store'), [
+                'name' => 'Rumeraz Diagnostic',
+                'email' => 'rumeraz@example.com',
+                'role' => 'provider',
+                // Recorded so the provider's profile opens with its address
+                // already filled in. It is not a catchment — see below.
+                'municipality' => 'Kalibo',
+                'password' => 'temporary-password',
+                'password_confirmation' => 'temporary-password',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $provider = User::query()->where('email', 'rumeraz@example.com')->sole();
+
+        $this->assertSame('Kalibo', $provider->municipality);
+
+        // The municipality is a starting address, never a scope. RhuScope is
+        // the one definition of what an account may see, and it answers only
+        // for RHU accounts — so storing this cannot widen a provider's reach.
+        $this->assertNull(RhuScope::municipality($provider));
+        $this->assertNull(RhuScope::address($provider));
+    }
+
+    public function test_provider_accounts_may_be_created_without_a_municipality(): void
+    {
+        $icm = User::factory()->create(['role' => 'icm']);
+
+        $this->actingAs($icm)
+            ->from(route('icm.accounts.index'))
+            ->post(route('icm.accounts.store'), [
+                'name' => 'Unassigned Diagnostic',
+                'email' => 'unassigned@example.com',
+                'role' => 'provider',
+                'password' => 'temporary-password',
+                'password_confirmation' => 'temporary-password',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull(
+            User::query()->where('email', 'unassigned@example.com')->sole()->municipality,
+        );
+    }
+
+    public function test_account_index_exposes_the_shared_municipality_list(): void
+    {
+        $icm = User::factory()->create(['role' => 'icm']);
+
+        $this->actingAs($icm)
+            ->get(route('icm.accounts.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Icm/Accounts/Index')
+                ->where('municipalities', AklanAddresses::municipalities()));
     }
 
     public function test_icm_cannot_create_another_icm_account_through_account_management(): void

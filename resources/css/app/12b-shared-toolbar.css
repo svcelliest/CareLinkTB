@@ -1,0 +1,114 @@
+/* ══════════════════════════════════════════════
+   SHARED TOOLBAR (Provider Programs, ICM Records/Archives)
+   ══════════════════════════════════════════════ */
+
+.page-toolbar {
+    background: #fff;
+    border-bottom: 1px solid #e8e0e0;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.toolbar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1.5px solid #e8e0e0;
+    border-radius: 8px;
+    padding: 9px 14px;
+    background: #fff;
+    flex: 1;
+    min-width: 200px;
+    max-width: 340px;
+}
+
+.toolbar-search:focus-within {
+    border-color: #c0392b;
+}
+
+.toolbar-search svg {
+    width: 15px;
+    height: 15px;
+    color: #aaa;
+    flex-shrink: 0;
+}
+
+.toolbar-search input {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+    background: transparent;
+}
+
+.toolbar-search button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+}
+
+.toolbar-search button:hover {
+    color: #c0392b;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.toolbar-right select {
+    border: 1.5px solid #e8e0e0;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #444;
+    outline: none;
+    cursor: pointer;
+    background: #fff;
+}
+
+.page-toolbar > select {
+    border: 1.5px solid #e8e0e0;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #444;
+    outline: none;
+    cursor: pointer;
+    background: #fff;
+}
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #fff;
+    color: #555;
+    border: 1.5px solid #e8e0e0;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+}
+
+.btn-secondary:hover {
+    border-color: #c0392b;
+    color: #c0392b;
+}
+

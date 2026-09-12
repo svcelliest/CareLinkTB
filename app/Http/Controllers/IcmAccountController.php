@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\AklanAddresses;
+use App\Support\RhuScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,11 +59,20 @@ class IcmAccountController extends Controller
                 'email' => $account->email,
                 'role' => $account->role,
                 'organization' => $account->organization,
+                'municipality' => $account->municipality,
+                // The address shown against an account. For an RHU this is
+                // derived from its municipality by the same helper the RHU's
+                // own account page uses, so the coordinator's list and the
+                // staff member's profile always read the same.
+                'location' => $account->role === 'rhu'
+                    ? RhuScope::address($account)
+                    : ($account->address ?: null),
                 'position' => $account->position,
                 'phone' => $account->phone,
                 'is_active' => $account->disabled_at === null,
                 'disabled_at' => $account->disabled_at?->toIso8601String(),
                 'created_at' => $account->created_at?->toIso8601String(),
+                'last_login_label' => $account->last_login_at?->format('M j, Y – g:i A') ?? 'Never',
             ]);
 
         return Inertia::render('Icm/Accounts/Index', [
@@ -72,6 +83,10 @@ class IcmAccountController extends Controller
                 'active' => (clone $managedAccounts)->whereNull('disabled_at')->count(),
                 'disabled' => (clone $managedAccounts)->whereNotNull('disabled_at')->count(),
             ],
+            // Same list patient registration cascades through, so the RHU
+            // municipality on this form can never name a place the rest of the
+            // app does not recognise.
+            'municipalities' => AklanAddresses::municipalities(),
         ]);
     }
 
@@ -82,10 +97,24 @@ class IcmAccountController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'role' => ['required', Rule::in(['rhu', 'provider'])],
             'organization' => ['nullable', 'string', 'max:150'],
+            // An RHU account covers one municipality and cannot be created
+            // without one. A provider is not *scoped* by its municipality —
+            // it stays optional — but recording it lets the provider's profile
+            // open with its address already filled in.
+            'municipality' => [
+                Rule::requiredIf(fn (): bool => $request->input('role') === 'rhu'),
+                'nullable',
+                Rule::in(AklanAddresses::municipalities()),
+            ],
             'position' => ['nullable', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
+
+        // Only RHU scope is decided by this field, so it is left as posted.
+        // An omitted or empty selection normalises to null rather than an
+        // empty string, so "no municipality" is one value in the column.
+        $validated['municipality'] = ($validated['municipality'] ?? null) ?: null;
 
         $account = DB::transaction(function () use ($request, $validated) {
             $account = User::create($validated);

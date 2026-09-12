@@ -52,6 +52,10 @@ class HandleInertiaRequests extends Middleware
                     'role' => $user->role,
                     'phone' => $user->phone,
                     'organization' => $user->organization,
+                    // The RHU sidebar names the unit under its logo, the way
+                    // the portal reference does. Shared here rather than on
+                    // each RHU page so the shell has it on every visit.
+                    'municipality' => $user->municipality,
                     'position' => $user->position,
                     'address' => $user->address,
                     'bio' => $user->bio,

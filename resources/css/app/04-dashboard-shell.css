@@ -1,0 +1,434 @@
+/* =========================
+   REFERENCE-MATCHED DASHBOARD SHELL
+========================= */
+.dash-shell {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+    background: #f5f0f0;
+    font-family: "Inter", sans-serif;
+}
+
+.dash-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity 0.2s ease,
+        visibility 0.2s ease;
+}
+
+/* ── Sidebar ── */
+.dash-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    width: 195px;
+    min-width: 195px;
+    height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: #c0392b;
+    transition: transform 0.3s ease;
+}
+
+.dash-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 20px 14px;
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.dash-brand-mark {
+    display: block;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.dash-sidebar-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0 18px;
+    text-align: center;
+}
+
+.dash-logo-placeholder,
+.dash-portal-logo {
+    display: flex;
+    width: 138px;
+    height: 138px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+}
+
+.dash-logo-placeholder {
+    color: #ffffff;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.dash-portal-logo {
+    object-fit: cover;
+}
+
+.dash-portal-label {
+    padding: 0 10px;
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.3px;
+    opacity: 0.92;
+}
+
+.dash-nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0;
+    padding: 0 10px;
+}
+
+.dash-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-decoration: none;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.dash-nav-link svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.dash-nav-link:hover,
+.dash-nav-link.active {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+.dash-nav-link:focus-visible,
+.dash-logout-btn:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.dash-menu-btn:focus-visible,
+.dash-bell-btn:focus-visible {
+    outline: 2px solid #c0392b;
+    outline-offset: 2px;
+}
+
+.dash-sidebar-bottom {
+    margin-top: auto;
+    padding: 10px 10px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dash-logout-btn {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.78);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.dash-logout-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+.dash-logout-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* ── Main and header ── */
+.dash-main {
+    display: flex;
+    width: calc(100% - 195px);
+    height: 100vh;
+    min-width: 0;
+    margin-left: 195px;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dash-header {
+    position: relative;
+    display: flex;
+    height: 62px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 0 28px;
+    border-bottom: 1px solid #e8e0e0;
+    background: #ffffff;
+}
+
+.dash-header-left {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    gap: 12px;
+}
+
+.dash-menu-btn {
+    display: none;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border: 0;
+    background: transparent;
+    color: #c0392b;
+    cursor: pointer;
+}
+
+.dash-menu-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+.dash-header-title {
+    min-width: 0;
+    overflow: hidden;
+    color: #1a1a1a;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-header-right {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 16px;
+}
+
+.dash-bell-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border: 0;
+    background: transparent;
+    color: #c0392b;
+    cursor: pointer;
+}
+
+.dash-bell-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+.dash-bell-dot {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 9px;
+    height: 9px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #e74c3c;
+}
+
+.dash-header-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dash-header-user-text {
+    min-width: 0;
+    max-width: 180px;
+    text-align: right;
+}
+
+.dash-header-user-name,
+.dash-header-user-role {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-header-user-name {
+    color: #1a1a1a;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.dash-header-user-role {
+    color: #888888;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+.dash-header-avatar {
+    display: flex;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 50%;
+    background: #e8e0e0;
+}
+
+.dash-header-avatar svg {
+    width: 30px;
+    height: 30px;
+    color: #aaaaaa;
+}
+
+.dash-content {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+    background: #f5f0f0;
+}
+
+/* Pages that own their own scrolling: the shell gives them the full height
+ * unpadded and stops scrolling at this level, so the page can keep a fixed
+ * toolbar or header above a scrolling body. */
+.dash-content-programs,
+.dash-content-program-detail {
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+@media (max-width: 900px) {
+    .dash-sidebar {
+        visibility: hidden;
+        transform: translateX(-100%);
+        transition:
+            transform 0.3s ease,
+            visibility 0s linear 0.3s;
+    }
+
+    .dash-sidebar.open {
+        visibility: visible;
+        transform: translateX(0);
+        transition-delay: 0s;
+    }
+
+    .dash-sidebar-overlay {
+        display: block;
+    }
+
+    .dash-sidebar-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    .dash-main {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .dash-menu-btn {
+        display: inline-flex;
+    }
+
+    .dash-content {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 600px) {
+    .dash-header {
+        gap: 12px;
+        padding: 0 16px;
+    }
+
+    .dash-header-right {
+        gap: 10px;
+    }
+
+    .dash-header-user-text {
+        max-width: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dash-header-user-text {
+        display: none;
+    }
+}
+
+/* Scroll container for the Tailwind-converted panel pages — ICM account
+ * management and archives. Those pages carry all of their own styling; this
+ * only sets the padding and background the dashboard shell wraps them in.
+ */
+.dash-content-panel {
+    padding: 22px;
+    overflow-y: auto;
+    background: #f7f4f3;
+}
+
+@media (max-width: 700px) {
+    .dash-content-panel {
+        padding: 14px;
+    }
+}

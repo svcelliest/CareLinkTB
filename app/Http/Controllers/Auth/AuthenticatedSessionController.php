@@ -29,6 +29,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Surfaced as the LAST LOGIN column on ICM account management.
+        $request->user()->forceFill(['last_login_at' => now()])->saveQuietly();
+
         ActivityLogger::record(
             $request->user(),
             'security.signed_in',

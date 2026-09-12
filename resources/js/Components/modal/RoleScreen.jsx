@@ -1,31 +1,24 @@
+// `logo` is the organisation's seal (public/img/logo_img/*.png). It is sized
+// and centred by `.role-icon img`. Keep this list in step with ROLES in
+// LoginModal.jsx.
 export const roles = [
     {
         key: "icm",
-        label: "Login as ICM",
+        label: "ICM Portal",
         desc: "International Care Ministries — program coordination & monitoring",
-        icon: (
-            <>
-                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-            </>
-        ),
+        logo: "/img/logo_img/icm_logo.png",
     },
     {
         key: "rhu",
-        label: "Login as RHU",
+        label: "RHU Portal",
         desc: "Rural Health Unit — patient management, sputum & contact tracing",
-        icon: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+        logo: "/img/logo_img/rhu_logo.png",
     },
     {
         key: "provider",
-        label: "Login as Provider",
+        label: "Provider Portal",
         desc: "X-ray & diagnostic service provider — results and referrals",
-        icon: (
-            <>
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            </>
-        ),
+        logo: "/img/logo_img/provider_logo.png",
     },
 ];
 
@@ -34,7 +27,7 @@ export default function RoleScreen({ onSelect }) {
         <div>
             <h2 className="role-screen-title">Welcome to CareLink TB</h2>
             <p className="role-screen-sub">
-                Select your account type to continue
+                Select your account role to continue
             </p>
 
             <div className="role-grid">
@@ -45,16 +38,7 @@ export default function RoleScreen({ onSelect }) {
                         onClick={() => onSelect(r.key)}
                     >
                         <div className="role-icon">
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                {r.icon}
-                            </svg>
+                            <img src={r.logo} alt="" aria-hidden="true" />
                         </div>
                         <div style={{ flex: 1, width: "100%" }}>
                             <div className="role-label">{r.label}</div>

@@ -6,6 +6,8 @@ use App\Http\Requests\UpdateAvatarRequest;
 use App\Http\Requests\UpdatePasswordRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Support\ActivityLogger;
+use App\Support\AklanAddresses;
+use App\Support\RhuScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +23,23 @@ class ProfileController extends Controller
 {
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+
         return Inertia::render('Profile/Edit', [
-            'role' => $request->user()->role,
+            'role' => $user->role,
+            // Non-null only for an RHU account with a municipality. The page
+            // shows it in place of the typed address and locks the field, and
+            // update() writes the same value, so the two can never disagree —
+            // including for accounts created before this was derived.
+            'derivedAddress' => RhuScope::address($user),
+            // A provider is assigned a municipality when the account is
+            // created. It seeds the Address field so they never have to name a
+            // place the account already records. Unlike the RHU's derived
+            // address this is a starting value, not a lock — a provider works
+            // across a catchment and may refine it.
+            'assignedAddress' => $user->role === 'provider' && $user->municipality !== null
+                ? $user->municipality.', '.AklanAddresses::province()
+                : null,
         ]);
     }
 
@@ -32,6 +49,15 @@ class ProfileController extends Controller
         $emailChanged = $user->email !== $request->validated('email');
 
         $user->fill($request->validated());
+
+        // An RHU's address belongs to its municipality, not to whatever the
+        // form posted. Enforced here rather than only in the browser, so a
+        // crafted request cannot put an RHU somewhere it does not cover.
+        $derivedAddress = RhuScope::address($user);
+
+        if ($derivedAddress !== null) {
+            $user->address = $derivedAddress;
+        }
 
         $changedFields = array_keys($user->getDirty());
 

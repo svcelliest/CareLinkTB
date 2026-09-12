@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Head } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import Sidebar from "@/Components/dashboard/Sidebar";
 import Header from "@/Components/dashboard/Header";
 import { navConfig } from "@/data/navConfig.jsx";
@@ -11,7 +11,16 @@ export default function DashboardLayout({
     contentClassName = "",
 }) {
     const config = navConfig[role];
+    const { auth } = usePage().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // An RHU account covers one municipality, and the reference names that
+    // unit under the sidebar logo ("RHU Banga"). Other roles are not scoped to
+    // a municipality, so they keep their portal label.
+    const portalLabel =
+        role === "rhu" && auth?.user?.municipality
+            ? `RHU ${auth.user.municipality}`
+            : config.portalLabel;
 
     useEffect(() => {
         if (!sidebarOpen) {
@@ -39,7 +48,10 @@ export default function DashboardLayout({
     return (
         <>
             <Head title={title} />
-            <div className="dash-shell">
+            {/* The role rides on the shell so the shared pages — Recent
+                Activity, Notifications, Account — can follow each portal is own
+                reference where the two disagree. */}
+            <div className={`dash-shell dash-role-${role}`}>
                 <button
                     type="button"
                     className={`dash-sidebar-overlay ${sidebarOpen ? "visible" : ""}`}
@@ -49,7 +61,7 @@ export default function DashboardLayout({
                     tabIndex={sidebarOpen ? 0 : -1}
                 />
                 <Sidebar
-                    portalLabel={config.portalLabel}
+                    portalLabel={portalLabel}
                     portalInitials={config.portalInitials}
                     logoSrc={config.logoSrc}
                     logoAlt={config.logoAlt}

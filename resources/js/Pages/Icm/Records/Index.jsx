@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/Components/ui/Toast";
 import { Link, router } from "@inertiajs/react";
 import { FaDownload, FaMagnifyingGlass, FaUsers, FaXmark } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
@@ -11,6 +12,7 @@ function formatAgeSex(age, sex) {
 }
 
 export default function Index({ patients, filters }) {
+    const toast = useToast();
     const [search, setSearch] = useState(filters.search ?? "");
 
     const visit = (next = {}) => {
@@ -89,7 +91,20 @@ export default function Index({ patients, filters }) {
                             <option value="normal">Normal</option>
                             <option value="presumptive">Presumptive TB</option>
                         </select>
-                        <a href={exportHref} className="btn-secondary">
+                        {/* This export is served by the route as a file
+                            download rather than built in the browser, so the
+                            page cannot observe it finishing. It says the
+                            export has started rather than claiming a success
+                            it has no way to confirm. */}
+                        <a
+                            href={exportHref}
+                            className="btn-secondary"
+                            onClick={() =>
+                                toast.info(
+                                    "Export started — your download will begin shortly",
+                                )
+                            }
+                        >
                             <FaDownload aria-hidden="true" />
                             Export CSV
                         </a>

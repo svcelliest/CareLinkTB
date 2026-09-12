@@ -9,6 +9,7 @@ import {
     FaMagnifyingGlass,
 } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import { usePolledReload } from "@/hooks/usePolledReload";
 
 const filters = [
     { value: "all", label: "All programs" },
@@ -23,9 +24,13 @@ const statusLabels = {
     completed: "Completed",
 };
 
-export default function Index({ programs }) {
+export default function Index({ programs, municipality }) {
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("all");
+
+    // Same status the other portals show, and it moves with the schedule, so
+    // this list refreshes itself rather than going stale on the day.
+    usePolledReload(["programs"]);
 
     const filteredPrograms = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -52,10 +57,11 @@ export default function Index({ programs }) {
                 <div className="rhu-programs-hero">
                     <div>
                         <span className="rhu-programs-eyebrow">RHU workspace</span>
-                        <h2 id="rhu-programs-title">Programs & Forms</h2>
+                        <h2 id="rhu-programs-title">Programs</h2>
                         <p>
-                            Open an ICM program to complete sputum collection
-                            and contact tracing records.
+                            {municipality
+                                ? `ICM programs covering ${municipality}. Open one to review the patients screened into it.`
+                                : "ICM programs covering your municipality."}
                         </p>
                     </div>
                     <div className="rhu-programs-hero-stat">
@@ -97,10 +103,13 @@ export default function Index({ programs }) {
                 <div className="rhu-programs-grid" aria-live="polite">
                     {filteredPrograms.length > 0 ? (
                         filteredPrograms.map((program) => {
-                            const completion = program.form_entries_count > 0
+                            // Patient Tracker completion for this program: the
+                            // two steps the tracker itself counts — sputum
+                            // collected and diagnostic assessment recorded.
+                            const completion = program.patients_count > 0
                                 ? Math.round(
-                                      (program.completed_entries_count /
-                                          program.form_entries_count) *
+                                      ((program.collected_count + program.assessed_count) /
+                                          (program.patients_count * 2)) *
                                           100,
                                   )
                                 : 0;
@@ -127,18 +136,18 @@ export default function Index({ programs }) {
 
                                     <div className="rhu-program-form-counts">
                                         <span>
-                                            <strong>{program.sputum_entries_count}</strong>
-                                            Sputum records
+                                            <strong>{program.patients_count}</strong>
+                                            Patients
                                         </span>
                                         <span>
-                                            <strong>{program.contact_tracing_entries_count}</strong>
-                                            Contact records
+                                            <strong>{program.presumptive_count}</strong>
+                                            Presumptive
                                         </span>
                                     </div>
 
                                     <div className="rhu-program-progress">
                                         <div>
-                                            <span>Form completion</span>
+                                            <span>Patient Tracker progress</span>
                                             <strong>{completion}%</strong>
                                         </div>
                                         <span className="rhu-program-progress-track">
@@ -147,10 +156,12 @@ export default function Index({ programs }) {
                                     </div>
 
                                     <Link
-                                        href={route("rhu.programs.show", program.id)}
+                                        href={route("rhu.tracker.index", {
+                                            program: program.id,
+                                        })}
                                         className="rhu-program-open"
                                     >
-                                        Open forms
+                                        Open Patient Tracker
                                         <FaArrowRight aria-hidden="true" />
                                     </Link>
                                 </article>

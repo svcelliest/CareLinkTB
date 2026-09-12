@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/Components/ui/Toast";
 import { Link, router } from "@inertiajs/react";
 import { FaArrowLeft, FaDownload, FaFloppyDisk, FaPen } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
@@ -85,9 +86,20 @@ function exportResponsesCsv(patient, fields) {
 }
 
 export default function FormDetail({ patient }) {
+    const toast = useToast();
     const isSputum = patient.form_type === "sputum_collection";
     const fields = isSputum ? SPUTUM_FIELDS : CONTACT_TRACING_FIELDS;
     const formLabel = isSputum ? "Sputum Collection Form" : "Contact Tracing Form";
+
+    /** Same CSV the button always wrote — the toast only reports the outcome. */
+    const handleExport = () => {
+        try {
+            exportResponsesCsv(patient, fields);
+            toast.success("Export completed successfully");
+        } catch {
+            toast.error("Export failed. Please try again.");
+        }
+    };
 
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -139,7 +151,7 @@ export default function FormDetail({ patient }) {
                         <button
                             type="button"
                             className="btn-secondary"
-                            onClick={() => exportResponsesCsv(patient, fields)}
+                            onClick={handleExport}
                         >
                             <FaDownload aria-hidden="true" />
                             Export

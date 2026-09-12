@@ -2,13 +2,16 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\IcmAccountController;
+use App\Http\Controllers\IcmContactTracingController;
 use App\Http\Controllers\IcmController;
-use App\Http\Controllers\IcmRecordController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\RhuController;
+use App\Http\Controllers\RhuPatientTrackerController;
+use App\Http\Controllers\RhuSmsLogController;
+use App\Http\Controllers\RhuTreatmentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ProgramController;
@@ -32,20 +35,69 @@ Route::middleware(['auth', 'active', 'role:icm'])->group(function () {
         ->name('icm.programs.export');
     Route::get('icm/programs/{program}', [ProgramController::class, 'show'])
         ->name('icm.programs.show');
-    Route::get('icm/records', [IcmRecordController::class, 'index'])->name('icm.records.index');
-    Route::get('icm/records/export', [IcmRecordController::class, 'export'])->name('icm.records.export');
-    Route::get('icm/records/{patient}', [IcmRecordController::class, 'show'])->name('icm.records.show');
-    Route::patch('icm/records/{patient}', [IcmRecordController::class, 'update'])->name('icm.records.update');
-    Route::get('icm/archives', fn () => Inertia::render('Icm/Archives/Index'))->name('icm.archives.index');
+    Route::patch('icm/programs/{program}', [ProgramController::class, 'update'])
+        ->name('icm.programs.update');
+    Route::patch('icm/programs/{program}/records', [ProgramController::class, 'updateRecords'])
+        ->name('icm.programs.records.update');
+    Route::patch('icm/programs/{program}/archive', [ProgramController::class, 'archive'])
+        ->name('icm.programs.archive');
+    Route::patch('icm/programs/{program}/restore', [ProgramController::class, 'restore'])
+        ->name('icm.programs.restore');
+    // Contact Tracing: patients under treatment, and the ACF report the RHU
+    // filed for them. Read-only — the treatment workflow itself stays in the
+    // RHU portal.
+    Route::get('icm/contact-tracing', [IcmContactTracingController::class, 'index'])
+        ->name('icm.contact-tracing.index');
+    Route::get('icm/contact-tracing/{case}', [IcmContactTracingController::class, 'show'])
+        ->name('icm.contact-tracing.show');
+
+    Route::get('icm/archives', [ProgramController::class, 'archives'])->name('icm.archives.index');
     Route::get('icm/inbox', [MessageController::class, 'index'])->name('icm.inbox');
     Route::get('icm/activity', [ActivityController::class, 'index'])->name('icm.activity');
 });
 
 Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
     Route::get('rhu/dashboard', [RhuController::class, 'dashboard'])->name('rhu.dashboard');
-    Route::get('rhu/programs', [RhuController::class, 'programs'])->name('rhu.programs.index');
-    Route::get('rhu/programs/{program}', [RhuController::class, 'showProgram'])->name('rhu.programs.show');
-    Route::post('rhu/programs/{program}/forms', [RhuController::class, 'storeForm'])->name('rhu.programs.forms.store');
+
+    // The RHU has no Programs screen of its own. Programs remain ICM-owned and
+    // reach the RHU through the Patient Tracker, whose program filter narrows
+    // the roster to one of the ICM's programs.
+
+    // Patient Tracker: Sputum Collection (read-only, ICM-owned) and Diagnostic
+    // Assessment (RHU-owned). Only the diagnostic half has a write route.
+    Route::get('rhu/patient-tracker', [RhuPatientTrackerController::class, 'index'])
+        ->name('rhu.tracker.index');
+    Route::patch('rhu/patient-tracker/diagnostic', [RhuPatientTrackerController::class, 'updateDiagnostic'])
+        ->name('rhu.tracker.diagnostic.update');
+
+    // Patient Monitoring: enrolment, the six-month record, and case closure.
+    Route::get('rhu/patient-monitoring', [RhuTreatmentController::class, 'index'])
+        ->name('rhu.treatment.index');
+    Route::post('rhu/patient-monitoring', [RhuTreatmentController::class, 'store'])
+        ->name('rhu.treatment.store');
+    Route::get('rhu/patient-monitoring/{case}', [RhuTreatmentController::class, 'show'])
+        ->name('rhu.treatment.show');
+    Route::patch('rhu/patient-monitoring/{case}/monitoring', [RhuTreatmentController::class, 'updateMonitoring'])
+        ->name('rhu.treatment.monitoring.update');
+
+    // Weekly medication dispensing: one endpoint records a new visit, the same
+    // one amends an existing record when the row is named.
+    Route::post('rhu/patient-monitoring/{case}/dispensing', [RhuTreatmentController::class, 'storeDispensing'])
+        ->name('rhu.treatment.dispensing.store');
+    Route::patch('rhu/patient-monitoring/{case}/dispensing/{record}', [RhuTreatmentController::class, 'storeDispensing'])
+        ->name('rhu.treatment.dispensing.update');
+
+    Route::patch('rhu/patient-monitoring/{case}/followups/{followup}', [RhuTreatmentController::class, 'updateFollowup'])
+        ->name('rhu.treatment.followups.update');
+    Route::put('rhu/patient-monitoring/{case}/contact-tracing', [RhuTreatmentController::class, 'saveContactTracing'])
+        ->name('rhu.treatment.contact-tracing.save');
+
+    Route::patch('rhu/patient-monitoring/{case}/outcome', [RhuTreatmentController::class, 'updateOutcome'])
+        ->name('rhu.treatment.outcome.update');
+
+    Route::get('rhu/sms-log', [RhuSmsLogController::class, 'index'])->name('rhu.sms.index');
+    Route::post('rhu/sms-log', [RhuSmsLogController::class, 'store'])->name('rhu.sms.store');
+
     Route::get('rhu/inbox', [MessageController::class, 'index'])->name('rhu.inbox');
     Route::get('rhu/activity', [ActivityController::class, 'index'])->name('rhu.activity');
 });
@@ -55,6 +107,16 @@ Route::middleware(['auth', 'active', 'role:provider'])->group(function () {
     Route::get('provider/programs', [ProviderController::class, 'programs'])->name('provider.programs.index');
     Route::get('provider/programs/{program}', [ProviderController::class, 'showProgram'])->name('provider.programs.show');
     Route::patch('provider/programs/{program}/finish', [ProviderController::class, 'finishProgram'])->name('provider.programs.finish');
+    Route::post('provider/programs/{program}/patients', [ProviderController::class, 'storePatient'])
+        ->name('provider.programs.patients.store');
+    Route::patch('provider/programs/{program}/patients/{patient}', [ProviderController::class, 'updatePatient'])
+        ->name('provider.programs.patients.update');
+    Route::patch('provider/programs/{program}/patients/{patient}/presumptive', [ProviderController::class, 'togglePatientPresumptive'])
+        ->name('provider.programs.patients.presumptive');
+    Route::post('provider/programs/{program}/patients/{patient}/notify', [ProviderController::class, 'notifyPatient'])
+        ->name('provider.programs.patients.notify');
+    Route::delete('provider/programs/{program}/patients/{patient}', [ProviderController::class, 'destroyPatient'])
+        ->name('provider.programs.patients.destroy');
     Route::get('provider/inbox', [MessageController::class, 'index'])->name('provider.inbox');
     Route::get('provider/activity', [ActivityController::class, 'index'])->name('provider.activity');
 });

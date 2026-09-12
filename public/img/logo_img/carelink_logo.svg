@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CareLink TB">
+  <title>CareLink TB</title>
+  <rect width="64" height="64" rx="5" fill="#d94f4f"/>
+  <polyline points="12,31.7 21.2,31.7 28.4,16.3 39.9,46.6 48.4,28.1 55.6,28.1"
+            fill="none" stroke="#fff" stroke-width="3.2"
+            stroke-linecap="butt" stroke-linejoin="miter"/>
+</svg>

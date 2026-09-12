@@ -1,0 +1,987 @@
+/* ══════════════════════════════════════════════
+   RECENT ACTIVITY · NOTIFICATIONS · ACCOUNT
+   Values taken from resources/reference/icm_portal.html. The reference names
+   these screens `.notif-full-*`, `.activities-card-full` and `.acct-*`; the
+   pages here kept their own class names, so the rules are re-pointed rather
+   than the markup renamed. Controls the reference has no equivalent for — the
+   category tabs, pagination, the change-password card and its dialog — follow
+   the same palette, radii and type scale as the blocks around them.
+   ══════════════════════════════════════════════ */
+
+/* ══ RECENT ACTIVITY PAGE ══ */
+
+.activities-page {
+    padding: 24px;
+}
+
+.activities-page-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+.activities-page-header {
+    padding: 20px 24px 14px;
+    border-bottom: 1px solid #f5f0f0;
+}
+
+.activities-page-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+}
+
+.activities-page-sub {
+    font-size: 12.5px;
+    color: #999;
+}
+
+/* Filter tabs and search sit on one row and wrap together on narrow screens,
+   so the search never gets squeezed out beside the tabs. */
+.activities-page-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 24px;
+    border-bottom: 1px solid #f5f0f0;
+}
+
+.activities-page-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.activities-page-tabs button {
+    border: none;
+    background: none;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #888;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+
+.activities-page-tabs button:hover {
+    background: #fdf3f2;
+    color: #c0392b;
+}
+
+.activities-page-tabs button.active {
+    background: #c0392b;
+    color: #fff;
+    font-weight: 600;
+}
+
+.activities-log-table-wrap {
+    overflow-x: auto;
+}
+
+.activities-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 500px;
+}
+
+.activities-log-table th {
+    font-size: 11px;
+    font-weight: 700;
+    color: #bbb;
+    padding: 12px 24px;
+    text-align: left;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid #f5f0f0;
+}
+
+.activities-log-table td {
+    font-size: 13px;
+    color: #444;
+    padding: 15px 24px;
+    border-bottom: 1px solid #f8f2f2;
+    vertical-align: middle;
+}
+
+.activities-log-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.activities-log-table tbody tr:hover {
+    background: #fdf8f8;
+}
+
+.time-col {
+    color: #555;
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+.module-badge {
+    display: inline-block;
+    background: #fef0f0;
+    color: #c0392b;
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.activities-log-link {
+    color: #c0392b;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.activities-log-link:hover {
+    text-decoration: underline;
+}
+
+.activities-log-desc {
+    display: block;
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: #888;
+}
+
+.activities-log-empty {
+    text-align: center;
+    padding: 48px;
+    color: #bbb;
+    font-size: 13.5px;
+}
+
+.activities-page-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 24px;
+    border-top: 1px solid #f5f0f0;
+}
+
+.activities-result-count {
+    font-size: 12px;
+    color: #999;
+}
+
+/* The footer already draws the divider above the row. */
+.activities-page-footer .activity-pagination {
+    border-top: none;
+    min-height: 0;
+    padding: 0;
+}
+
+/* ══ NOTIFICATIONS PAGE ══ */
+
+.notif-page {
+    padding: 24px;
+}
+
+.notif-page-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+.notif-page-header {
+    padding: 20px 24px 14px;
+    border-bottom: 1px solid #f5f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.notif-page-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.notif-page-sub {
+    font-size: 12.5px;
+    color: #999;
+    margin-top: 3px;
+}
+
+.mark-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: none;
+    border: 1.5px solid #c0392b;
+    color: #c0392b;
+    border-radius: 7px;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+
+.mark-all-btn:hover {
+    background: #c0392b;
+    color: #fff;
+}
+
+.mark-all-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.notif-page-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #f8f2f2;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.notif-page-item:last-child {
+    border-bottom: none;
+}
+
+.notif-page-item:hover {
+    background: #fdf8f8;
+}
+
+.notif-page-item.unread {
+    background: #fff8f8;
+}
+
+.notif-page-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notif-page-icon.red {
+    background: #fef0f0;
+}
+
+.notif-page-icon.green {
+    background: #edfaf3;
+}
+
+.notif-page-icon.blue {
+    background: #eef2ff;
+}
+
+.notif-page-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.notif-page-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notif-page-item-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Stands in for the reference's unread dot, which this page doesn't render. */
+.notif-unread-pill {
+    background: #fef0f0;
+    color: #c0392b;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.notif-page-item-body {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+}
+
+.notif-page-item-time {
+    font-size: 11.5px;
+    color: #bbb;
+    margin-top: 5px;
+}
+
+.notif-page-empty {
+    text-align: center;
+    padding: 48px;
+    color: #bbb;
+    font-size: 13.5px;
+}
+
+.notif-page-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 12px 18px;
+    border-top: 1px solid #f5f0f0;
+}
+
+.notif-page-pagination a,
+.notif-page-pagination span {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    color: #7e7270;
+    font-size: 11px;
+    text-decoration: none;
+}
+
+.notif-page-pagination a:hover,
+.notif-page-pagination a.active {
+    background: #c0392b;
+    color: #fff;
+}
+
+/* ══ ACCOUNT PAGE ══ */
+
+.account-page {
+    max-width: 780px;
+    width: 100%;
+    padding: 28px;
+    box-sizing: border-box;
+}
+
+.page-title-block {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+}
+
+.account-header-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+    padding: 24px;
+    margin-bottom: 16px;
+}
+
+.account-profile-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.account-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.account-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #dde3f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.account-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.account-avatar-initials {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #3d4f7c;
+    letter-spacing: 1px;
+}
+
+.account-avatar-edit {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #1e253a;
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.account-avatar-edit:hover {
+    background: #2f3a58;
+}
+
+.account-avatar-edit svg {
+    width: 12px;
+    height: 12px;
+    color: #fff;
+}
+
+/* While an upload is in flight the control shows the shared spinner and stops
+   accepting clicks, so the file dialog can't be reopened mid-request. */
+.account-avatar-edit.uploading {
+    cursor: default;
+    pointer-events: none;
+}
+
+.account-display-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+}
+
+.account-display-role {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.account-role-badge {
+    background: #eef1f8;
+    color: #1e253a;
+    border-radius: 6px;
+    padding: 3px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.account-info-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+    padding: 28px;
+    margin-bottom: 16px;
+}
+
+.account-info-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 20px;
+}
+
+.account-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 24px;
+}
+
+.account-info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.account-info-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #b0b8c9;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.account-info-input {
+    font-size: 14px;
+    color: #1a1a1a;
+    border: 1px solid #e4e8f0;
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    background: #f7f8fb;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+
+.account-info-input:focus {
+    border-color: #c0392b;
+    background: #fff;
+}
+
+.account-info-input[readonly],
+.account-info-input:disabled {
+    background: #f7f8fb;
+    color: #aaa;
+    cursor: default;
+    border-color: #eaecf2;
+}
+
+.account-info-error {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #c0392b;
+}
+
+.account-info-hint {
+    font-size: 11.5px;
+    color: #9aa1ad;
+}
+
+.account-btn-row {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 20px;
+}
+
+.account-save-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #1e253a;
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    padding: 12px 36px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.account-save-btn:hover {
+    background: #2f3a58;
+}
+
+.account-save-btn:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+/* ══ Password & security ══ */
+
+.change-password-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+    padding: 24px 28px;
+}
+
+.change-password-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.change-password-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+}
+
+.change-password-sub {
+    font-size: 12.5px;
+    color: #999;
+}
+
+.change-password-btn {
+    background: none;
+    border: 1.5px solid #c0392b;
+    color: #c0392b;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+
+.change-password-btn:hover {
+    background: #c0392b;
+    color: #fff;
+}
+
+.change-password-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 700;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.change-password-modal-overlay.visible {
+    display: flex;
+}
+
+.change-password-modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.change-password-modal h2 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 18px;
+}
+
+.cp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.change-password-error {
+    display: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: #c0392b;
+    background: #fef0f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+}
+
+.change-password-error.visible {
+    display: block;
+}
+
+.change-password-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.cp-cancel-btn,
+.cp-save-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 9px;
+    padding: 11px 24px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.cp-cancel-btn {
+    background: #f0f0f0;
+    color: #555;
+}
+
+.cp-cancel-btn:hover {
+    background: #e0e0e0;
+}
+
+.cp-save-btn {
+    background: #1e253a;
+    color: #fff;
+}
+
+.cp-save-btn:hover {
+    background: #2f3a58;
+}
+
+.cp-cancel-btn:disabled,
+.cp-save-btn:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+/* The reference collapses the two-column details grid on narrow screens. */
+@media (max-width: 700px) {
+    .account-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-page {
+        padding: 20px 16px;
+    }
+
+    .activities-page,
+    .notif-page {
+        padding: 16px;
+    }
+}
+
+/* Name + role badge share the profile row with the avatar; without this the
+   block refuses to shrink and a long name pushes the badge out of the card. */
+.account-name-block {
+    min-width: 0;
+}
+
+/* ══════════════════════════════════════════════
+   PROVIDER PORTAL OVERRIDES
+   Recent Activity, Notifications and Account are one set of pages shared by
+   every portal, and the two mockups style them differently:
+   provider_portal.html gives the activity log a solid red module pill and a
+   larger account header than icm_portal.html does. The rules above follow the
+   ICM reference; these follow the provider one, scoped to the provider shell
+   so each portal matches its own source of truth.
+   ══════════════════════════════════════════════ */
+
+/* ── Recent Activity ── */
+
+.dash-role-provider .activities-page {
+    overflow-y: auto;
+    height: 100%;
+}
+
+.dash-role-provider .activities-page-header {
+    padding: 22px 24px 12px;
+}
+
+.dash-role-provider .activities-log-table th {
+    text-transform: uppercase;
+}
+
+.dash-role-provider .module-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #fff;
+    background: #c0392b;
+    letter-spacing: normal;
+}
+
+.dash-role-provider .time-col {
+    font-size: 13px;
+    color: #555;
+}
+
+/* ── Notifications ── */
+
+.dash-role-provider .notif-unread-pill {
+    background: #c0392b;
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}
+
+/* ── Account ── */
+
+.dash-role-provider .account-page {
+    padding: 28px 32px;
+    max-width: 1800px;
+    height: auto;
+}
+
+.dash-role-provider .page-title-block {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 22px;
+}
+
+.dash-role-provider .account-header-card {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    padding: 28px 28px 24px;
+    margin-bottom: 18px;
+}
+
+.dash-role-provider .account-profile-row {
+    gap: 22px;
+    flex-wrap: wrap;
+}
+
+.dash-role-provider .account-avatar {
+    width: 90px;
+    height: 90px;
+    background: #e8edf5;
+    border: 3px solid #d0d9e8;
+}
+
+.dash-role-provider .account-avatar svg {
+    width: 54px;
+    height: 54px;
+}
+
+.dash-role-provider .account-avatar-initials {
+    font-size: 1.7rem;
+    color: #1e2535;
+}
+
+.dash-role-provider .account-avatar-edit {
+    bottom: 2px;
+    right: 2px;
+    background: #1e2535;
+}
+
+.dash-role-provider .account-avatar-edit:hover {
+    background: #2a3347;
+}
+
+.dash-role-provider .account-display-name {
+    margin-bottom: 3px;
+}
+
+.dash-role-provider .account-display-role {
+    font-size: 13px;
+    color: #888;
+    gap: 6px;
+}
+
+.dash-role-provider .account-role-badge {
+    color: #1e2535;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.dash-role-provider .account-info-card {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    padding: 24px 28px;
+    margin-bottom: 18px;
+}
+
+.dash-role-provider .account-info-title {
+    font-size: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eef0f5;
+}
+
+.dash-role-provider .account-info-grid {
+    gap: 16px;
+}
+
+.dash-role-provider .account-info-row {
+    gap: 4px;
+}
+
+.dash-role-provider .account-info-label {
+    font-weight: 700;
+    color: #bbb;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+}
+
+.dash-role-provider .account-info-input {
+    font-size: 13.5px;
+    font-weight: 500;
+    border: 1.5px solid #e0e4ed;
+    padding: 10px 13px;
+    background: #f5f6fa;
+}
+
+.dash-role-provider .account-info-input:focus {
+    border-color: #1e2535;
+    background: #fff;
+}
+
+.dash-role-provider .account-info-input[readonly],
+.dash-role-provider .account-info-input:disabled {
+    background: #f5f6fa;
+    color: #aaa;
+    border-color: #eee;
+}
+
+.dash-role-provider .account-btn-row {
+    margin-top: 18px;
+    padding-top: 4px;
+}
+
+.dash-role-provider .account-save-btn {
+    background: #1e2535;
+    border-radius: 9px;
+    padding: 11px 28px;
+}
+
+.dash-role-provider .account-save-btn:hover {
+    background: #2a3347;
+}
+
+/* ══════════════════════════════════════════════
+   RHU PORTAL OVERRIDES
+   rhu_portal.html agrees with the ICM reference on the Account page, so that
+   one needs nothing here. It parts company on the activity log — a taller
+   header, a solid red module pill and a 13px time column — and on the
+   notifications unread pill, which it draws like the provider portal's.
+   ══════════════════════════════════════════════ */
+
+.dash-role-rhu .activities-page-header {
+    padding: 22px 24px 12px;
+}
+
+.dash-role-rhu .module-badge {
+    display: inline-block;
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #fff;
+    background: #c0392b;
+    letter-spacing: normal;
+}
+
+.dash-role-rhu .time-col {
+    font-size: 13px;
+    color: #555;
+}
+
+.dash-role-rhu .notif-unread-pill {
+    background: #c0392b;
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}

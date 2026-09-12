@@ -29,7 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Inertia endpoints need validation failures flashed to the session, so
+        // JSON error rendering stays opt-in by path. The landing page's
+        // password-recovery steps are plain JSON calls (the login modal drives
+        // them with fetch so it keeps its own screen state), so they opt in too.
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->is('forgot-password/*'),
         );
     })->create();

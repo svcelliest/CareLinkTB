@@ -1,0 +1,125 @@
+
+/* ── BASE ──
+ *
+ * These live in `@layer base` rather than unlayered, and that placement is
+ * load-bearing. An unlayered rule beats every layered one no matter its
+ * specificity, so while `* { margin: 0; padding: 0 }` sat outside a layer it
+ * silently defeated Tailwind's spacing utilities (`p-4`, `px-3`, …), which
+ * Tailwind emits into `@layer utilities`. Inside `base` the reset still wins
+ * against browser defaults — which is all it is for — and still loses to the
+ * unlayered page CSS below, so nothing else changes.
+ */
+@layer base {
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        font-family: "DM Sans", sans-serif;
+        color: #222;
+        background: #fff;
+    }
+}
+
+/* ── KEYFRAMES ── */
+@keyframes formSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    20%,
+    60% {
+        transform: translateX(-5px);
+    }
+    40%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+/* The chevron for a select rendered with `appearance-none`. Only the image and
+   its position live here — Tailwind supplies `appearance-none` and the right
+   padding — so this adds nothing the utilities already cover. The gutter in
+   `right 12px` is what stops the arrow sitting flush against the border. */
+.cl-select-arrow {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999999'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+}
+
+/* Thin, track-less scrollbars with no stepper arrows, applied app-wide.
+ *
+ * Six components already declared this same pattern for their own scroll
+ * areas; those selectors are more specific and keep their colours. This is the
+ * default for everything else — the modals, the register tables, the page
+ * shell — so the rule exists once rather than being copied a seventh time.
+ */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #d8cac7 transparent;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d8cac7;
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #c7b8b5;
+}
+
+/* The stepper buttons at each end of a WebKit scrollbar. */
+::-webkit-scrollbar-button {
+    display: none;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@keyframes kenBurns {
+    from {
+        transform: scale(1) translate(0, 0);
+    }
+    to {
+        transform: scale(1.06) translate(-1%, -1%);
+    }
+}
+@keyframes heroEnter {
+    from {
+        opacity: 0;
+        transform: translateY(32px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
