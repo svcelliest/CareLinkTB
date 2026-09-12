@@ -16,8 +16,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // updateOrCreate keeps the demo credentials repeatable when the seeder
-        // is run more than once on a developer's existing database.
+        if (!app()->environment('local')) {
+            return;
+        }
         $icm = User::updateOrCreate(
             ['email' => 'icm.demo@carelink.test'],
             [
