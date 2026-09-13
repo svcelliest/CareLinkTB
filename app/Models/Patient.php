@@ -60,6 +60,10 @@ class Patient extends Model
             return ($this->responses['diagnostic_result'] ?? null) === 'positive';
         }
 
+        if ($this->form_type === 'provider_screening') {
+            return (bool) ($this->responses['presumptive'] ?? false);
+        }
+
         return ($this->responses['tb_case_identified'] ?? null) === '1';
     }
 }

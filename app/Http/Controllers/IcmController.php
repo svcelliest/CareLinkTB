@@ -11,7 +11,11 @@ class IcmController extends Controller
     {
         return Inertia::render('Icm/Dashboard', [
             'user' => auth()->user(),
-            'stats' => [],
+            'stats' => [
+                'total_programs' => \App\Models\Program::count(),
+                'active_programs' => \App\Models\Program::active()->count(),
+                'registered_patients' => \App\Models\Patient::count(),
+            ],
         ]);
     }
 }

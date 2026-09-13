@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carelink TB - Provider Portal</title>
+  <link rel="icon" type="image/png" href="img/logo_img/icm_logo_transparent.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f5f0f0;display:flex;height:100vh;overflow:hidden}
+.sidebar{width:195px;min-width:195px;background:#c0392b;display:flex;flex-direction:column;height:100vh;overflow-y:auto;overflow-x:hidden;position:fixed;left:0;top:0;z-index:200;transition:transform .3s ease}
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 20px 14px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  background: transparent;
+}
+
+.sidebar-brand-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+  background: transparent;
+}
+.sidebar-emblem{display:flex;flex-direction:column;align-items:center;padding:10px 0 18px;gap:10px}
+.sidebar-logo-placeholder {
+  width: 115px;
+  height: 115px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.sidebar-logo-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+.sidebar-rhu-name{color:#fff;font-size:12.5px;font-weight:600;text-align:center;letter-spacing:0.3px;opacity:0.92}
+.nav-list{list-style:none;padding:0 10px;flex:1}
+.nav-list li{border-radius:8px;margin-bottom:2px}
+.nav-list li a{display:flex;align-items:center;gap:11px;width:100%;padding:10px 12px;border-radius:8px;border:none;background:none;color:rgba(255,255,255,0.78);text-decoration:none;font-size:13.5px;font-weight:500;transition:background .15s,color .15s;cursor:pointer;font-family:'Inter',sans-serif}
+.nav-list li a svg{width:18px;height:18px;flex-shrink:0;pointer-events:none}
+.nav-list li a:hover,.nav-list li.active a{background:rgba(255,255,255,0.18);color:#fff}
+.sidebar-bottom{padding:10px 10px 18px;border-top:1px solid rgba(255,255,255,0.15);margin-top:auto}
+.sidebar-bottom a{display:flex;align-items:center;gap:11px;width:100%;padding:9px 12px;border-radius:8px;border:none;background:none;color:rgba(255,255,255,0.78);text-decoration:none;font-size:13.5px;font-weight:500;transition:background .15s;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:2px}
+.sidebar-bottom a svg{width:18px;height:18px;pointer-events:none}
+.sidebar-bottom a:hover{background:rgba(255,255,255,0.18);color:#fff}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:199}
+.sidebar-overlay.visible{display:block}
+.main{margin-left:195px;flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{background:#fff;border-bottom:1px solid #e8e0e0;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:62px;flex-shrink:0;position:relative}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.hamburger-btn{display:none;background:none;border:none;cursor:pointer;color:#c0392b;padding:4px}
+.hamburger-btn svg{width:22px;height:22px}
+.topbar h1{font-size:18px;font-weight:600;color:#1a1a1a}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.notif-btn{background:none;border:none;cursor:pointer;color:#c0392b;padding:4px;position:relative}
+.notif-btn svg{width:22px;height:22px}
+.notif-badge{position:absolute;top:0;right:0;width:9px;height:9px;border-radius:50%;background:#e74c3c;border:2px solid #fff}
+.user-info{display:flex;align-items:center;gap:10px;cursor:pointer}
+.user-text{text-align:right}
+.user-name{font-size:13px;font-weight:600;color:#1a1a1a}
+.user-role{font-size:11px;color:#888}
+.user-avatar{width:38px;height:38px;border-radius:50%;overflow:hidden;background:#e8e0e0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-avatar svg{width:30px;height:30px}
+.user-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.notif-panel{display:none;position:absolute;top:66px;right:20px;width:320px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:300;border:1px solid #f0eaea}
+.notif-panel.visible{display:block}
+.notif-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #f5f0f0}
+.notif-panel-title{font-size:14px;font-weight:700;color:#1a1a1a}
+.notif-mark-read{font-size:11.5px;color:#c0392b;font-weight:600;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif}
+.notif-list{max-height:280px;overflow-y:auto}
+.notif-item{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid #faf5f5;cursor:pointer;transition:background .1s}
+.notif-item:hover{background:#fdf8f8}
+.notif-item.unread{background:#fff8f8}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:#c0392b;flex-shrink:0;margin-top:5px}
+.notif-dot.read{background:#e0e0e0}
+.notif-item-content{flex:1}
+.notif-item-title{font-size:12.5px;font-weight:600;color:#1a1a1a;margin-bottom:2px}
+.notif-item-body{font-size:11.5px;color:#888;line-height:1.4}
+.notif-item-time{font-size:10.5px;color:#bbb;margin-top:3px}
+.notif-panel-footer{padding:10px 16px;text-align:center;border-top:1px solid #f5f0f0}
+.notif-panel-footer a{font-size:12px;color:#c0392b;font-weight:600;text-decoration:none;cursor:pointer}
+.page{display:none;overflow-y:auto;height:calc(100vh - 62px)}
+.page.active{display:flex;flex-direction:column}
+.dash-scroll{overflow-y:auto;flex:1;padding:24px;display:flex;flex-direction:column;gap:20px}
+/* ══ DASHBOARD KPI CARDS ══ */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.stat-card{background:#fff;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .2s,transform .15s;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--kpi-accent,#c0392b)}
+.stat-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.12);transform:translateY(-2px)}
+.stat-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.stat-label{font-size:10.5px;color:#6b7280;font-weight:700;letter-spacing:.3px;line-height:1.4;text-transform:uppercase}
+.stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.blue{background:#eef2ff}
+.stat-icon.green{background:#edfaf3}
+.stat-icon.red{background:#fef0f0}
+.stat-icon svg{width:19px;height:19px}
+.stat-value{font-size:30px;font-weight:800;color:#1a1a1a;line-height:1}
+.stat-sub{font-size:11px;color:#9aa1ad;font-weight:500}
+.dash-lower{display:flex;flex-direction:column;gap:18px}
+.dash-lower-top{display:grid;grid-template-columns:1fr 280px;gap:18px}
+.activities-card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06);min-height:450px}
+.activities-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.activities-header h2{font-size:15px;font-weight:700;color:#1a1a1a}
+.view-all{display:flex;align-items:center;gap:4px;font-size:12px;color:#c0392b;font-weight:600;text-decoration:none;cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;padding:6px 10px;border-radius:6px;transition:background .15s,color .15s}
+.view-all:hover{background:#fef0f0;color:#a93226}
+.view-all svg{width:13px;height:13px}
+.activity-list{list-style:none}
+.activity-item{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f5f0f0;flex-wrap:wrap;gap:4px;border-radius:8px;margin:0 -12px;cursor:pointer;transition:background .15s}
+.activity-item:hover{background:#fdf5f5}
+.activity-item:last-child{border-bottom:none}
+.completed-view{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.completed-header{padding:20px 24px 16px;background:#fff;border-bottom:1px solid #f0eded;flex-shrink:0}
+.completed-header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.completed-back{display:flex;align-items:center;gap:8px;background:none;border:none;font-size:16px;font-weight:700;color:#1a1a1a;cursor:pointer;font-family:'Inter',sans-serif;padding:0}
+.completed-back svg{width:18px;height:18px;color:#c0392b}
+.completed-export-btn{display:flex;align-items:center;gap:7px;background:#fff;border:1.5px solid #e8e0e0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;color:#555;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s}
+.completed-export-btn:hover{border-color:#c0392b;color:#c0392b}
+.completed-export-btn svg{width:15px;height:15px}
+.completed-sub{font-size:12.5px;color:#888;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.completed-status-row{display:flex;align-items:center;gap:7px}
+.completed-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.completed-status-label{font-size:13px;font-weight:700;color:#1a1a1a}
+.completed-status-sub{font-size:12px;color:#aaa;font-weight:400;margin-left:6px}
+.completed-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 24px;background:#f9f7f7;flex-shrink:0}
+.completed-stat-box{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:18px 20px;text-align:center}
+.completed-stat-label{font-size:10.5px;font-weight:700;color:#bbb;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px}
+.completed-stat-value{font-size:28px;font-weight:800;color:#1a1a1a;line-height:1}
+.completed-stat-value.red{color:#c0392b}
+.completed-stat-value.green-text{color:#27ae60}
+.completed-stat-value.status-done{font-size:18px;font-weight:800;color:#27ae60}
+.completed-stat-value.status-upcoming{font-size:18px;font-weight:800;color:#6366f1}
+.completed-patients-section{flex:1;overflow-y:auto;padding:18px 24px}
+.completed-patients-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}
+.completed-patients-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f5f0f0}
+.completed-patients-title{font-size:15px;font-weight:700;color:#1a1a1a}
+.view-only-badge{display:flex;align-items:center;gap:5px;background:#f9f7f7;border:1.5px solid #e8e0e0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;color:#888}
+.view-only-badge svg{width:13px;height:13px}
+.completed-patient-table{width:100%;border-collapse:collapse}
+.completed-patient-table th{font-size:11.5px;font-weight:700;color:#bbb;padding:12px 20px;text-align:left;letter-spacing:.4px;border-bottom:1px solid #f0eded}
+.completed-patient-table td{font-size:13.5px;color:#333;padding:15px 20px;border-bottom:1px solid #f8f3f3;vertical-align:middle}
+.completed-patient-table tbody tr:last-child td{border-bottom:none}
+.completed-patient-table tbody tr:hover{background:#fdf8f8}
+.completed-patient-table .pt-name{font-weight:700;color:#1a1a1a;font-size:13px}
+.status-pill-normal{display:inline-flex;align-items:center;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;color:#27ae60;background:#f0fdf4;border:1.5px solid #bbf7d0}
+.status-pill-presumptive{display:inline-flex;align-items:center;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;color:#c0392b;background:#fef2f2;border:1.5px solid #fecaca}
+.activity-title{font-size:13px;font-weight:500;color:#1a1a1a}
+.activity-title strong{font-weight:700}
+.activity-title .presump{color:#e74c3c;font-weight:700}
+.activity-meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:#aaa;font-weight:500}
+.activity-tag{font-size:10px;font-weight:700;color:#c0392b;letter-spacing:.4px}
+.dot-sep{color:#ddd}
+.activity-time-col{font-size:11.5px;color:#aaa;white-space:nowrap;flex-shrink:0}
+.right-col{display:flex;flex-direction:column;gap:18px}
+.ongoing-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.ongoing-dot-row{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.ongoing-dot{width:8px;height:8px;border-radius:50%;background:#27ae60}
+.ongoing-label{font-size:13px;font-weight:700;color:#1a1a1a}
+.ongoing-prog-name{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
+.ongoing-prog-loc{font-size:12px;color:#888;margin-bottom:14px}
+.screened-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.screened-label{font-size:11px;font-weight:700;color:#888;letter-spacing:.4px;text-transform:uppercase}
+.screened-count{font-size:14px;font-weight:700;color:#27ae60}
+.continue-btn{width:100%;background:#c0392b;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.continue-btn:hover{background:#a93226}
+.upcoming-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.06);min-height:230px;display:flex;flex-direction:column;justify-content:space-between}
+.upcoming-label{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:14px}
+.upcoming-item{display:flex;align-items:center;gap:14px}
+.upcoming-icon{width:44px;height:44px;border-radius:10px;background:#fef0f0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.upcoming-icon svg{width:22px;height:22px;color:#c0392b}
+.upcoming-prog-name{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
+.upcoming-prog-loc{font-size:12px;color:#888}
+.upcoming-sched-label{font-size:10px;font-weight:700;color:#bbb;letter-spacing:.4px;text-transform:uppercase;margin:12px 0 4px}
+.upcoming-sched-time{font-size:13px;font-weight:700;color:#1a1a1a}
+.open-btn{width:100%;background:#fff;color:#1a1a1a;border:1.5px solid #e8e0e0;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-top:12px;transition:border-color .15s}
+.open-btn:hover{border-color:#c0392b;color:#c0392b}
+.active-programs-card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06);width:100%}
+.ap-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:14px}
+.ap-table{width:100%;border-collapse:collapse}
+.ap-table th{font-size:11px;font-weight:700;color:#bbb;text-align:left;padding:8px 12px;border-bottom:1px solid #f5f0f0;letter-spacing:.4px;text-transform:uppercase}
+.ap-table td{font-size:13px;color:#444;padding:13px 12px;border-bottom:1px solid #f8f2f2}
+.ap-table tbody tr:last-child td{border-bottom:none}
+.ap-table tbody tr:hover{background:#fdf8f8}
+.status-pill{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.status-pill.active{background:#edfaf3;color:#27ae60}
+.status-pill.upcoming{background:#ede9fe;color:#6366f1}
+.status-pill.completed{background:#f0f0f0;color:#888}
+/* ══ PROGRAM MODULE — mirrors the ICM portal program module ══ */
+.prog-page{display:flex;flex-direction:column;height:100%}
+.page-toolbar{background:#fff;border-bottom:1px solid #e8e0e0;padding:12px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap}
+.toolbar-search{display:flex;align-items:center;gap:8px;border:1.5px solid #e8e0e0;border-radius:8px;padding:9px 14px;background:#fff;flex:1;min-width:200px;max-width:340px}
+.toolbar-search svg{width:15px;height:15px;color:#aaa;flex-shrink:0}
+.toolbar-search input{border:none;outline:none;font-size:13px;font-family:'Inter',sans-serif;width:100%}
+.toolbar-search:focus-within{border-color:#c0392b}
+.prog-tabs{display:flex;gap:4px;padding:12px 24px 0;border-bottom:1px solid #e8e0e0;background:#fff;flex-shrink:0}
+.prog-tab{padding:9px 18px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;color:#888;cursor:pointer;border:1.5px solid transparent;border-bottom:none;background:#f5f0f0;transition:color .15s,background .15s}
+.prog-tab.active{background:#fff;color:#c0392b;border-color:#e8e0e0}
+.prog-list{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px}
+.prog-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:18px 22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:box-shadow .2s,border-color .2s;border:1.5px solid transparent}
+.prog-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.1);border-color:#f0eaea}
+.prog-card.active-prog{border-color:#fde8e8}
+.prog-info{flex:1;min-width:0}
+.prog-name-row{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.prog-name{font-size:14px;font-weight:700;color:#1a1a1a}
+.prog-card.active-prog .prog-name{color:#c0392b}
+.prog-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.prog-badge.active{background:#edfaf3;color:#27ae60}
+.prog-badge.upcoming{background:#eaf3ff;color:#3b82f6;border:1px solid #d7e8ff}
+.prog-badge.completed{background:#f0f0f0;color:#888}
+.prog-loc-row{display:flex;align-items:center;gap:5px;font-size:12px;color:#888}
+.prog-loc-row svg{width:13px;height:13px;flex-shrink:0}
+.prog-meta-row{display:flex;align-items:center;gap:28px;flex-shrink:0}
+.prog-meta-item{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#888}
+.prog-meta-item svg{width:14px;height:14px;flex-shrink:0}
+.prog-meta-item span{white-space:nowrap}
+.prog-arrow{color:#aaa;flex-shrink:0}
+.prog-arrow svg{width:18px;height:18px}
+.screening-page{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.screening-header{background:#fff;border-radius:12px;margin:20px 24px 0;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:18px 22px;flex-shrink:0}
+.screening-header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.screening-back{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:#1a1a1a;cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif}
+.screening-back svg{width:20px;height:20px;color:#c0392b}
+.screening-back:hover .screening-back-text{color:#c0392b}
+.finish-btn{background:#c0392b;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:8px;transition:background .15s}
+.finish-btn:hover{background:#a93226}
+.finish-btn svg{width:16px;height:16px}
+.screening-sub{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;margin-bottom:10px}
+.screening-sub .dot-sep{color:#ddd}
+.screening-status-row{display:flex;align-items:center;gap:20px;font-size:12.5px}
+.active-dot{width:8px;height:8px;border-radius:50%;background:#27ae60;flex-shrink:0}
+.active-session-label{font-weight:700;color:#1a1a1a}
+.session-meta{color:#888}
+.presump-count{color:#c0392b;font-weight:700}
+.last-updated{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#bbb;margin-left:auto}
+.last-updated svg{width:13px;height:13px}
+.screening-body{flex:1;overflow-y:auto;padding:16px 24px 24px;display:grid;grid-template-columns:420px 1fr;gap:16px;min-height:0}
+.register-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:22px;height:fit-content}
+.register-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:18px}
+.register-title svg{width:20px;height:20px;color:#c0392b}
+.field-group{margin-bottom:14px}
+.field-label{font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block}
+.field-input{width:100%;border:1.5px solid #e8e0e0;border-radius:8px;padding:11px 13px;font-size:13.5px;font-family:'Inter',sans-serif;color:#1a1a1a;outline:none;transition:border-color .2s}
+.field-input:focus{border-color:#c0392b}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-select{width:100%;border:1.5px solid #e8e0e0;border-radius:8px;padding:11px 13px;font-size:13.5px;font-family:'Inter',sans-serif;color:#1a1a1a;outline:none;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E") no-repeat right 12px center;cursor:pointer;transition:border-color .2s}
+.field-select:focus{border-color:#c0392b}
+.reg-btn-row{display:flex;gap:10px;margin-top:18px}
+.add-patient-btn{flex:1;background:#c0392b;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.add-patient-btn:hover{background:#a93226}
+.clear-btn{background:#fff;color:#1a1a1a;border:1.5px solid #e8e0e0;border-radius:8px;padding:13px 22px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s}
+.clear-btn:hover{border-color:#c0392b;color:#c0392b}
+.patient-list-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:18px 20px;display:flex;flex-direction:column;overflow:hidden}
+.patient-list-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
+.patient-search-box{display:flex;align-items:center;gap:8px;border:1.5px solid #e8e0e0;border-radius:8px;padding:9px 13px;flex:1}
+.patient-search-box svg{width:14px;height:14px;color:#aaa}
+.patient-search-box input{border:none;outline:none;font-size:13px;font-family:'Inter',sans-serif;width:100%}
+.patient-export-btn{display:flex;align-items:center;gap:6px;background:#fff;color:#1a1a1a;border:1.5px solid #e8e0e0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;transition:border-color .15s}
+.patient-export-btn:hover{border-color:#c0392b;color:#c0392b}
+.patient-export-btn svg{width:15px;height:15px}
+.patient-table-wrap{flex:1;overflow-y:auto}
+.patient-table{width:100%;border-collapse:collapse}
+.patient-table th{font-size:11px;font-weight:700;color:#bbb;text-align:left;padding:10px 14px;border-bottom:1px solid #f0eaea;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+.patient-table td{font-size:13px;color:#444;padding:14px 14px;border-bottom:1px solid #f8f2f2;vertical-align:middle}
+.patient-table tbody tr:last-child td{border-bottom:none}
+.patient-table tbody tr:hover{background:#fdf8f8}
+.patient-name{font-weight:700;color:#1a1a1a;font-size:13.5px}
+.patient-contact{font-size:11.5px;color:#888;margin-top:2px}
+.patient-age{font-size:13px;color:#555;font-weight:600}
+.patient-addr{font-size:11.5px;color:#888;margin-top:2px}
+.status-normal{display:inline-block;background:#edfaf3;color:#27ae60;border-radius:20px;padding:4px 12px;font-size:11.5px;font-weight:700}
+.status-presump{display:inline-block;background:#fef0f0;color:#c0392b;border-radius:20px;padding:4px 12px;font-size:11.5px;font-weight:700}
+.action-col{display:flex;align-items:center;gap:8px}
+.action-warn-btn{background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center}
+.action-warn-btn svg{width:22px;height:22px;color:#e67e22}
+.action-warn-btn.active svg{color:#c0392b}
+.action-notify-btn{background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;color:#6366f1}
+.action-notify-btn svg{width:20px;height:20px}
+.action-notify-btn:hover{color:#4338ca}
+.action-notify-btn.sent{color:#27ae60;cursor:default}
+.action-notify-btn:disabled{cursor:default;opacity:.85}
+.action-more-btn{background:none;border:none;cursor:pointer;color:#bbb;font-size:20px;line-height:1;padding:2px 6px}
+.action-more-btn:hover{color:#555}
+.empty-patients{text-align:center;padding:48px 20px;color:#bbb}
+.empty-patients svg{width:44px;height:44px;margin-bottom:10px}
+.empty-patients p{font-size:14px}
+.inbox-page{padding:24px;height:100%;display:flex}
+.inbox-layout{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;overflow:hidden;width:100%}
+.inbox-sidebar{width:280px;min-width:280px;border-right:1px solid #f0eaea;display:flex;flex-direction:column}
+.inbox-sidebar-top{padding:16px;border-bottom:1px solid #f0eaea}
+.compose-btn{width:100%;background:#c0392b;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Inter',sans-serif;transition:background .15s}
+.compose-btn:hover{background:#a93226}
+.compose-btn svg{width:16px;height:16px}
+.inbox-search{display:flex;align-items:center;gap:8px;border:1px solid #e8e0e0;border-radius:8px;padding:8px 12px;margin-top:10px}
+.inbox-search svg{width:14px;height:14px;color:#aaa}
+.inbox-search input{border:none;outline:none;font-size:13px;font-family:'Inter',sans-serif;width:100%}
+.inbox-tabs{display:flex;border-bottom:1px solid #f0eaea;padding:0 16px}
+.inbox-tab{flex:1;padding:10px 0;text-align:center;font-size:13px;font-weight:500;color:#888;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.inbox-tab.active{color:#c0392b;border-bottom-color:#c0392b;font-weight:600}
+.inbox-msg-list{flex:1;overflow-y:auto}
+.inbox-msg-item{padding:14px 16px;border-bottom:1px solid #f5f0f0;cursor:pointer;transition:background .1s}
+.inbox-msg-item:hover{background:#fdf8f8}
+.inbox-msg-item.active{background:#fdf0f0}
+.inbox-msg-sender{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.sender-name{font-size:11.5px;font-weight:700;color:#c0392b}
+.msg-time{font-size:11px;color:#aaa}
+.msg-subject{font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.unread-dot{width:7px;height:7px;border-radius:50%;background:#c0392b;flex-shrink:0}
+.msg-preview{font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inbox-content{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.inbox-empty svg{width:56px;height:56px;color:#ddd}
+.inbox-empty-text{font-size:15px;font-weight:600;color:#333}
+.inbox-empty-sub{font-size:12.5px;color:#aaa;text-align:center;max-width:220px}
+.inbox-message-view{flex:1;padding:28px 32px;display:none;flex-direction:column}
+.inbox-message-view.visible{display:flex}
+.inbox-msg-view-header{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #f0eaea}
+.inbox-msg-view-subject{font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:8px}
+.inbox-msg-view-meta{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#888;flex-wrap:wrap}
+.inbox-msg-view-sender{font-weight:600;color:#c0392b}
+.inbox-msg-view-body{font-size:14px;color:#333;line-height:1.7}
+.compose-popup{display:none;position:fixed;bottom:24px;right:24px;width:420px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:400;border:1px solid #e8e0e0;overflow:hidden}
+.compose-popup.visible{display:flex;flex-direction:column}
+.compose-popup-header{background:#c0392b;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.compose-popup-title{font-size:14px;font-weight:700}
+.compose-popup-close{background:none;border:none;color:#fff;cursor:pointer;font-size:18px;line-height:1}
+.compose-popup-body{padding:16px;display:flex;flex-direction:column;gap:10px}
+.compose-field{display:flex;flex-direction:column;gap:4px}
+.compose-field label{font-size:11px;font-weight:700;color:#999;letter-spacing:.4px}
+.compose-field input,.compose-field select{border:1px solid #e8e0e0;border-radius:7px;padding:8px 11px;font-size:13px;font-family:'Inter',sans-serif;outline:none;color:#333}
+.compose-field select{background:#fff;cursor:pointer;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.compose-field input:focus,.compose-field select:focus{border-color:#c0392b}
+.compose-msg-area{border:1px solid #e8e0e0;border-radius:7px;padding:10px 11px;font-size:13px;font-family:'Inter',sans-serif;resize:none;height:90px;outline:none;color:#333}
+.compose-msg-area:focus{border-color:#c0392b}
+.compose-popup-footer{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.compose-attach-row{display:flex;gap:8px}
+.compose-attach-btn{display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #e8e0e0;border-radius:7px;padding:7px 14px;font-size:12.5px;font-weight:600;color:#555;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s,color .15s}
+.compose-attach-btn svg{width:14px;height:14px}
+.compose-attach-btn:hover{border-color:#c0392b;color:#c0392b}
+.compose-footer-btns{display:flex;justify-content:flex-end;gap:8px}
+.compose-cancel-btn{background:#f5f0f0;color:#666;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+.compose-send-btn{background:#c0392b;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.compose-send-btn:hover{background:#a93226}
+.activities-page{padding:24px;overflow-y:auto;height:100%}
+.activities-page-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}
+.activities-page-header{padding:22px 24px 12px;border-bottom:1px solid #f5f0f0}
+.activities-page-title{font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:4px}
+.activities-page-sub{font-size:12.5px;color:#999}
+.activities-log-table-wrap{overflow-x:auto}
+.activities-log-table{width:100%;border-collapse:collapse;min-width:480px}
+.activities-log-table th{font-size:11px;font-weight:700;color:#bbb;padding:12px 24px;text-align:left;letter-spacing:.6px;border-bottom:1px solid #f5f0f0;text-transform:uppercase}
+.activities-log-table td{font-size:13px;color:#444;padding:15px 24px;border-bottom:1px solid #f8f2f2;vertical-align:middle}
+.activities-log-table tbody tr:last-child td{border-bottom:none}
+.activities-log-table tbody tr:hover{background:#fdf8f8}
+.module-badge{display:inline-flex;align-items:center;padding:5px 14px;border-radius:20px;font-size:11.5px;font-weight:700;color:#fff;background:#c0392b}
+.time-col{color:#555;font-size:13px;white-space:nowrap}
+.notif-page{padding:24px}
+.notif-page-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}
+.notif-page-header{padding:20px 24px 14px;border-bottom:1px solid #f5f0f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.notif-page-title{font-size:18px;font-weight:700;color:#1a1a1a}
+.notif-page-sub{font-size:12.5px;color:#999;margin-top:3px}
+.mark-all-btn{background:none;border:1.5px solid #c0392b;color:#c0392b;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,color .15s}
+.mark-all-btn:hover{background:#c0392b;color:#fff}
+.notif-page-list{padding:0}
+.notif-page-item{display:flex;align-items:flex-start;gap:14px;padding:16px 24px;border-bottom:1px solid #f8f2f2;cursor:pointer;transition:background .1s}
+.notif-page-item:last-child{border-bottom:none}
+.notif-page-item:hover{background:#fdf8f8}
+.notif-page-item.unread{background:#fff8f8}
+.notif-page-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.notif-page-icon.red{background:#fef0f0}
+.notif-page-icon.green{background:#edfaf3}
+.notif-page-icon.blue{background:#eef2ff}
+.notif-page-icon svg{width:20px;height:20px}
+.notif-page-content{flex:1}
+.notif-page-item-title{font-size:13.5px;font-weight:600;color:#1a1a1a;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.notif-unread-pill{background:#c0392b;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.3px}
+.notif-page-item-body{font-size:13px;color:#666;line-height:1.5}
+.notif-page-item-time{font-size:11.5px;color:#bbb;margin-top:5px}
+.account-page{padding:28px 32px;max-width:1800px;height:auto}
+.page-title-block{font-size:22px;font-weight:800;color:#1a1a1a;margin-bottom:22px}
+.account-header-card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:28px 28px 24px;margin-bottom:18px}
+.account-profile-row{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.account-avatar-wrap{position:relative;flex-shrink:0}
+.account-avatar{width:90px;height:90px;border-radius:50%;background:#e8edf5;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #d0d9e8}
+.account-avatar img{width:100%;height:100%;object-fit:cover}
+.account-avatar-initials{font-size:1.7rem;font-weight:700;color:#1e2535}
+.account-avatar svg{width:54px;height:54px}
+.account-avatar-edit{position:absolute;bottom:2px;right:2px;width:26px;height:26px;border-radius:50%;background:#1e2535;border:2px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
+.account-avatar-edit:hover{background:#2a3347}
+.account-avatar-edit svg{width:12px;height:12px;color:#fff}
+.account-display-name{font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:3px}
+.account-display-role{font-size:13px;color:#888;display:flex;align-items:center;gap:6px}
+.account-role-badge{background:#eef1f8;color:#1e2535;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700}
+.account-info-card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:24px 28px;margin-bottom:18px}
+.account-info-title{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef0f5}
+.account-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.account-info-row{display:flex;flex-direction:column;gap:4px}
+.account-info-label{font-size:11px;font-weight:700;color:#bbb;letter-spacing:.4px;text-transform:uppercase;margin-bottom:2px;display:block}
+.account-info-input{font-size:13.5px;color:#1a1a1a;font-weight:500;border:1.5px solid #e0e4ed;border-radius:8px;padding:10px 13px;font-family:'Inter',sans-serif;outline:none;width:100%;transition:border-color .2s;background:#f5f6fa}
+.account-info-input:focus{border-color:#1e2535;background:#fff}
+.account-info-input[readonly]{background:#f5f6fa;color:#aaa;cursor:default;border-color:#eee}
+.account-btn-row{display:flex;justify-content:flex-end;margin-top:18px;padding-top:4px}
+.account-save-btn{background:#1e2535;color:#fff;border:none;border-radius:9px;padding:11px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.account-save-btn:hover{background:#2a3347}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.visible{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
+.modal-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.modal-icon.success{background:#edfaf3}
+.modal-icon.confirm{background:#fef9e7}
+.modal-icon svg{width:28px;height:28px}
+.modal-title{font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:8px}
+.modal-body{font-size:13.5px;color:#666;line-height:1.6;margin-bottom:22px}
+.modal-btn-group{display:flex;justify-content:center;gap:10px}
+.modal-btn{border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.modal-btn.ok{background:#27ae60;color:#fff}.modal-btn.ok:hover{background:#1e8449}
+.modal-btn.primary{background:#c0392b;color:#fff}.modal-btn.primary:hover{background:#a93226}
+.modal-btn.secondary{background:#f0f0f0;color:#555}.modal-btn.secondary:hover{background:#e0e0e0}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .hamburger-btn{display:flex}
+  .screening-body{grid-template-columns:1fr}
+  .dash-lower-top{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:1fr 1fr}
+  .prog-card{flex-wrap:wrap;gap:12px}
+  .prog-meta-row{gap:18px}
+  .page-toolbar{padding:12px 16px}
+  .prog-tabs{padding:12px 16px 0;overflow-x:auto}
+  .prog-list{padding:16px}
+}
+@media(max-width:480px){
+  .stat-row{grid-template-columns:1fr}
+  .prog-meta-row{width:100%;justify-content:space-between;gap:10px}
+}
+#logout-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(5px);z-index:600;align-items:center;justify-content:center}
+#logout-modal.active{display:flex}
+@keyframes popIn{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+.logout-card{background:#fff;border-radius:20px;padding:40px 36px 32px;width:100%;max-width:400px;box-shadow:0 32px 80px rgba(0,0,0,.2);text-align:center;animation:popIn .22s ease}
+.logout-icon{width:64px;height:64px;background:rgba(192,57,43,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.logout-icon svg{width:30px;height:30px;color:#c0392b}
+.logout-card h3{font-size:1.25rem;font-weight:800;color:#1a1a1a;margin-bottom:8px}
+.logout-card p{font-size:.9rem;color:#6b7280;line-height:1.6;margin-bottom:28px}
+.logout-actions{display:flex;gap:12px}
+.btn-cancel-logout{flex:1;background:#f5f0f0;border:1.5px solid #e8e0e0;border-radius:10px;padding:12px;font-family:'Inter',sans-serif;font-size:.9rem;font-weight:600;color:#6b7280;cursor:pointer;transition:background .15s,color .15s}
+.btn-cancel-logout:hover{background:#e8e0e0;color:#1a1a1a}
+.btn-confirm-logout{flex:1;background:#c0392b;border:none;border-radius:10px;padding:12px;font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.btn-confirm-logout:hover{background:#a93226}
+.btn-confirm-logout svg{width:16px;height:16px}
+/* Upcoming program view banner */
+.upcoming-banner{background:#f0effe;border:1.5px solid #c7d2fe;border-radius:12px;padding:20px 24px;margin:18px 24px 0;display:flex;align-items:flex-start;gap:14px}
+.upcoming-banner-icon{width:44px;height:44px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.upcoming-banner-icon svg{width:22px;height:22px;color:#6366f1}
+.upcoming-banner-title{font-size:14px;font-weight:700;color:#4338ca;margin-bottom:4px}
+.upcoming-banner-body{font-size:13px;color:#6366f1;line-height:1.5}
+
+/* Gmail-like one-to-many recipient selector */
+.compose-recipient-box{
+  --recipient-accent: var(--red,#c0392b);
+  position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px;width:100%;
+  min-height:38px;border:1px solid #e8e0e0;border-radius:7px;background:#fff;padding:5px 9px;cursor:text;
+}
+.compose-recipient-box:focus-within{border-color:var(--recipient-accent);}
+.compose-recipient-box .recipient-chips{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0;min-height:0;}
+.compose-recipient-box .recipient-chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;background:#fef0f0;color:var(--recipient-accent);border-radius:999px;padding:4px 8px;font-size:11.5px;font-weight:700;line-height:1;border:1px solid rgba(192,57,43,.14);}
+.compose-recipient-box .recipient-chip button{border:none;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0;}
+.compose-recipient-input{border:none!important;outline:none!important;box-shadow:none!important;flex:1;min-width:135px;padding:4px 2px!important;font-size:13px;font-family:inherit;color:#333;background:transparent!important;}
+.compose-recipient-input::placeholder{color:#aaa;}
+.compose-recipient-dropdown{display:none;position:absolute;left:0;right:0;top:calc(100% + 5px);background:#fff;border:1px solid #e8e0e0;border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:950;max-height:185px;overflow-y:auto;padding:6px;}
+.compose-recipient-dropdown.open{display:block;}
+.compose-recipient-option{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:7px;font-size:13px;color:#333;cursor:pointer;}
+.compose-recipient-option:hover{background:#fdf5f5;}
+.compose-recipient-option.is-selected{color:#999;background:#fafafa;cursor:default;}
+.compose-recipient-option small{font-size:10.5px;color:#aaa;font-weight:600;}
+
+  
+
+/* Suggested accounts dropdown for Gmail-like compose recipients */
+.compose-recipient-box{padding-right:30px!important;}
+.compose-recipient-box::after{content:'';position:absolute;right:12px;top:50%;transform:translateY(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #999;pointer-events:none;}
+.compose-recipient-box.dropdown-open::after{transform:translateY(-50%) rotate(180deg);}
+.compose-recipient-dropdown-header{padding:7px 10px 6px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;color:#999;border-bottom:1px solid #f2eeee;margin-bottom:4px;}
+.compose-recipient-option-main{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.compose-recipient-option-name{font-weight:650;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.compose-recipient-option-meta{font-size:10.5px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.compose-recipient-option-add{font-size:11px;font-weight:700;color:var(--recipient-accent,var(--red,#c0392b));}
+.compose-recipient-empty{padding:10px;font-size:12px;color:#999;text-align:center;}
+
+
+
+/* ══ CHANGE PASSWORD PROFILE SECTION ══ */
+.change-password-card{background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.07);padding:24px 28px;margin-bottom:16px;}
+.change-password-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.change-password-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:4px;}
+.change-password-sub{font-size:12.5px;color:#888;line-height:1.5;}
+.change-password-btn{background:#c0392b;color:#fff;border:none;border-radius:9px;padding:11px 20px;font-family:'Inter',sans-serif;font-size:13.5px;font-weight:700;cursor:pointer;transition:background .15s, transform .15s;white-space:nowrap;}
+.change-password-btn:hover{background:#a93226;transform:translateY(-1px);}
+.change-password-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;padding:18px;}
+.change-password-modal-overlay.visible{display:flex;}
+.change-password-modal{width:100%;max-width:420px;background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.22);padding:26px 26px 22px;animation:changePasswordPop .2s ease;}
+@keyframes changePasswordPop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.change-password-modal h3{font-size:18px;font-weight:800;color:#1a1a1a;margin-bottom:6px;}
+.change-password-modal p{font-size:13px;color:#777;line-height:1.5;margin-bottom:18px;}
+.cp-field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px;}
+.cp-field label{font-size:11px;font-weight:800;color:#777;letter-spacing:.4px;text-transform:uppercase;}
+.cp-field input{width:100%;border:1.5px solid #e8e0e0;border-radius:9px;padding:11px 13px;font-family:'Inter',sans-serif;font-size:13.5px;outline:none;color:#1a1a1a;background:#fff;transition:border-color .15s, box-shadow .15s;}
+.cp-field input:focus{border-color:#c0392b;box-shadow:0 0 0 3px rgba(192,57,43,.08);}
+.change-password-error{display:none;background:#fff0f0;color:#c0392b;border:1px solid #f3c7c7;border-radius:8px;padding:9px 11px;font-size:12.5px;font-weight:600;margin:4px 0 14px;line-height:1.4;}
+.change-password-error.visible{display:block;}
+.change-password-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px;}
+.cp-cancel-btn,.cp-save-btn{border:none;border-radius:9px;padding:10px 18px;font-family:'Inter',sans-serif;font-size:13.5px;font-weight:700;cursor:pointer;transition:background .15s, transform .15s;}
+.cp-cancel-btn{background:#f5f0f0;color:#666;}.cp-cancel-btn:hover{background:#e8e0e0;color:#333;}
+.cp-save-btn{background:#c0392b;color:#fff;}.cp-save-btn:hover{background:#a93226;transform:translateY(-1px);}
+@media(max-width:480px){.change-password-header{align-items:flex-start;}.change-password-btn{width:100%;}.change-password-actions{flex-direction:column-reverse;}.cp-cancel-btn,.cp-save-btn{width:100%;}}
+
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+  <img src="img/logo_img/icm_logo_transparent.png" alt="CareLink TB Logo" class="sidebar-brand-img">
+  <span>CareLink TB</span>
+</div>
+  <div class="sidebar-emblem">
+    <div class="sidebar-logo-placeholder">
+      <img src="img/logo_img/provider_logo.png" alt="RHU Logo">
+    </div>
+    <div class="sidebar-rhu-name">Rumeraz Diagnostic</div>
+  </div>
+  <ul class="nav-list">
+    <li class="active" data-page="dashboard"><a onclick="navigate('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard
+    </a></li>
+    <li data-page="program"><a onclick="navigate('program')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Program
+    </a></li>
+    <li data-page="inbox"><a onclick="navigate('inbox')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,8 12,14 22,8"/></svg>Inbox
+    </a></li>
+    <li data-page="activities"><a onclick="navigate('activities')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>Recent Activity
+    </a></li>
+  </ul>
+  <div class="sidebar-bottom">
+    <a onclick="openLogoutModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log Out
+    </a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <h1 id="page-title">Provider Dashboard</h1>
+    </div>
+    <div class="topbar-right">
+      <button class="notif-btn" onclick="toggleNotifPanel(event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="notif-badge" id="notif-badge"></span>
+      </button>
+      <div class="user-info" onclick="navigate('account')">
+        <div class="user-text">
+          <div class="user-name">Rumeraz Diagnostic</div>
+          <div class="user-role">Service Provider</div>
+        </div>
+        <div class="user-avatar" id="topbar-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="notif-panel" id="notif-panel">
+      <div class="notif-panel-header"><span class="notif-panel-title">Notifications</span><button class="notif-mark-read" onclick="markAllRead()">Mark all read</button></div>
+      <div class="notif-list">
+        <div class="notif-item unread" onclick="openWelcomeProfileNotification(this)"><div class="notif-dot"></div><div class="notif-item-content"><div class="notif-item-title">Welcome to CareLink TB System</div><div class="notif-item-body">Please review your profile information and update your account settings if needed.</div><div class="notif-item-time">Today · 08:00 AM</div></div></div>
+        <div class="notif-item unread" onclick="markRead(this)"><div class="notif-dot"></div><div class="notif-item-content"><div class="notif-item-title">New Screening Session Started</div><div class="notif-item-body">ACF TB Program – Banga is now active. 12 patients screened.</div><div class="notif-item-time">10 min ago</div></div></div>
+        <div class="notif-item unread" onclick="markRead(this)"><div class="notif-dot"></div><div class="notif-item-content"><div class="notif-item-title">Presumptive TB Flagged</div><div class="notif-item-body">Maria D. Santos was marked Presumptive TB during screening.</div><div class="notif-item-time">25 min ago</div></div></div>
+        <div class="notif-item" onclick="markRead(this)"><div class="notif-dot read"></div><div class="notif-item-content"><div class="notif-item-title">Message from ICM Admin</div><div class="notif-item-body">Screening schedule update for Barangay 7 approved.</div><div class="notif-item-time">2 hrs ago</div></div></div>
+      </div>
+      <div class="notif-panel-footer"><a onclick="navigate('notif-page')">View all notifications</a></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="dash-scroll">
+      <div class="stat-row">
+        <div class="stat-card" style="--kpi-accent:#3b82f6" onclick="navigate('program')">
+          <div class="stat-card-top">
+            <span class="stat-label">Total<br>Programs</span>
+            <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg></div>
+          </div>
+          <span class="stat-value">3</span><span class="stat-sub">Assigned screening programs</span>
+        </div>
+        <div class="stat-card" style="--kpi-accent:#27ae60" onclick="navigate('screening')">
+          <div class="stat-card-top">
+            <span class="stat-label">Registered<br>Patients</span>
+            <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="#27ae60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+          </div>
+          <span class="stat-value">110</span><span class="stat-sub">Across all programs</span>
+        </div>
+        <div class="stat-card" style="--kpi-accent:#c0392b" onclick="navigate('activities')">
+          <div class="stat-card-top">
+            <span class="stat-label">Presumptive<br>TB Cases</span>
+            <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16.3" r=".6" fill="#c0392b" stroke="none"/></svg></div>
+          </div>
+          <span class="stat-value">12</span><span class="stat-sub">Flagged for referral</span>
+        </div>
+      </div>
+      <div class="dash-lower">
+        <div class="dash-lower-top">
+          <div style="display:flex;flex-direction:column;gap:18px">
+            <div class="activities-card">
+              <div class="activities-header">
+                <h2>Recent Activities</h2>
+                <button class="view-all" onclick="navigate('activities')">View All <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+              <ul class="activity-list">
+                <li class="activity-item"><div><div class="activity-title">Registered Patient under <strong>ACF TB Program – Makato</strong></div><div class="activity-meta"><span class="activity-tag">REGISTRATION</span><span class="dot-sep">•</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mar 31, 2026 – 09:15 AM</div></div></li>
+                <li class="activity-item"><div><div class="activity-title">Marked Maria Santos as <span class="presump">Presumptive TB</span></div><div class="activity-meta"><span class="activity-tag">STATUS UPDATE</span><span class="dot-sep">•</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mar 31, 2026 – 09:45 AM</div></div></li>
+                <li class="activity-item"><div><div class="activity-title">Sent message regarding follow-up case</div><div class="activity-meta"><span class="activity-tag">SMS</span><span class="dot-sep">•</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mar 31, 2026 – 10:00 AM</div></div></li>
+                <li class="activity-item"><div><div class="activity-title">Completed registration for <strong>Mobile X-Ray Unit Deployment</strong></div><div class="activity-meta"><span class="activity-tag">REGISTRATION</span><span class="dot-sep">•</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mar 30, 2026 – 02:30 PM</div></div></li>
+                <li class="activity-item"><div><div class="activity-title">Registered Patient under <strong>Community TB Screening – Barangay 7</strong></div><div class="activity-meta"><span class="activity-tag">REGISTRATION</span><span class="dot-sep">•</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mar 31, 2026 – 09:15 AM</div></div></li>
+              </ul>
+            </div>
+          </div>
+          <div class="right-col">
+            <div class="ongoing-card">
+              <div class="ongoing-dot-row"><div class="ongoing-dot"></div><div class="ongoing-label">Ongoing Activity</div></div>
+              <div class="ongoing-prog-name">Community TB Screening – Barangay 7</div>
+              <div class="ongoing-prog-loc">Barangay 7 Health Center</div>
+              <div class="screened-row"><span class="screened-label">PATIENTS SCREENED</span><span class="screened-count">12</span></div>
+              <button class="continue-btn" onclick="openProgram(1)">Continue Registration</button>
+            </div>
+            <div class="upcoming-card">
+              <div class="upcoming-label">Upcoming Activity</div>
+              <div class="upcoming-item">
+                <div class="upcoming-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                <div><div class="upcoming-prog-name">ACF TB – Makato</div><div class="upcoming-prog-loc">Cayangwan, Makato, Aklan</div></div>
+              </div>
+              <div class="upcoming-sched-label">SCHEDULED FOR</div>
+              <div class="upcoming-sched-time">2026-06-15 09:00 AM</div>
+              <button class="open-btn" onclick="openProgram(2)">Open Activity</button>
+            </div>
+          </div>
+        </div>
+        <div class="active-programs-card">
+          <div class="ap-title">Programs</div>
+          <table class="ap-table">
+            <thead><tr><th>Activity Name</th><th>Location</th><th>Date & Time</th><th>Status</th><th>Patients</th></tr></thead>
+            <tbody>
+              <tr><td>ACF TB Program – Banga</td><td>Toralba, Banga, Aklan</td><td>2026-05-02 – 09:00 AM</td><td><span class="status-pill active">Active</span></td><td>12</td></tr>
+              <tr><td>ACF TB Program – Makato</td><td>Cayangwan, Makato, Aklan</td><td>2026-06-15 – 09:00 AM</td><td><span class="status-pill upcoming">Upcoming</span></td><td>0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROGRAM PAGE -->
+  <div class="page" id="page-program">
+    <div class="prog-page">
+      <div class="page-toolbar">
+        <div class="toolbar-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search programs..." oninput="filterPrograms(this.value)"></div>
+      </div>
+      <div class="prog-tabs">
+        <div class="prog-tab active" onclick="switchProgTab(this,'all')">All</div>
+        <div class="prog-tab" onclick="switchProgTab(this,'active')">Active</div>
+        <div class="prog-tab" onclick="switchProgTab(this,'upcoming')">Upcoming</div>
+        <div class="prog-tab" onclick="switchProgTab(this,'completed')">Completed</div>
+      </div>
+      <div class="prog-list" id="prog-list"></div>
+    </div>
+  </div>
+
+  <!-- SCREENING PAGE -->
+  <div class="page" id="page-screening">
+    <div class="screening-page">
+      <div class="screening-header">
+        <div class="screening-header-top">
+          <button class="screening-back" onclick="navigate('program')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <span class="screening-back-text" id="screening-prog-name">ACF TB Program – Banga</span>
+          </button>
+          <button class="finish-btn" onclick="finishSession()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Finish Session
+          </button>
+        </div>
+        <div class="screening-sub">
+          <span id="screening-prog-loc">Toralba, Banga, Aklan</span>
+          <span class="dot-sep">•</span>
+          <span id="screening-prog-date">2026-05-02 09:00 AM</span>
+        </div>
+        <div class="screening-status-row">
+          <div class="active-dot"></div>
+          <span class="active-session-label">Status: Active Session</span>
+          <span class="session-meta">Total Patients: <strong id="total-patients-count">0</strong></span>
+          <span class="session-meta">Presumptive TB: <span class="presump-count" id="presump-count">0</span></span>
+          <div class="last-updated"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Last updated: Just now</div>
+        </div>
+      </div>
+      <div class="screening-body">
+        <div class="register-card">
+          <div class="register-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            Register Patient
+          </div>
+          <div class="field-group"><label class="field-label">Full Name</label><input type="text" class="field-input" id="reg-name" placeholder="Enter full name"></div>
+          <div class="field-row">
+            <div class="field-group"><label class="field-label">Birthday</label><input type="date" class="field-input" id="reg-birthday"></div>
+            <div class="field-group"><label class="field-label">Sex</label><select class="field-select" id="reg-sex"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+          </div>
+          <div class="field-group"><label class="field-label">Address</label><input type="text" class="field-input" id="reg-address" placeholder="Enter complete address"></div>
+          <div class="field-group"><label class="field-label">Contact Number</label><input type="text" class="field-input" id="reg-contact" placeholder="e.g. 09xxxxxxxxx"></div>
+          <div class="reg-btn-row">
+            <button class="add-patient-btn" onclick="addPatient()">Add Patient</button>
+            <button class="clear-btn" onclick="clearForm()">Clear</button>
+          </div>
+        </div>
+        <div class="patient-list-card">
+          <div class="patient-list-top">
+            <div class="patient-search-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="Search patients..." oninput="filterPatientList(this.value)">
+            </div>
+            <button class="patient-export-btn" onclick="exportPatients()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="patient-table-wrap">
+            <table class="patient-table">
+              <thead><tr><th>#</th><th>Patient</th><th>Details</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="patient-list-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETED VIEW -->
+  <div class="page" id="page-completed">
+    <div class="completed-view">
+      <div class="completed-header">
+        <div class="completed-header-top">
+          <button class="completed-back" onclick="navigate('program')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <span id="completed-prog-name">ACF TB Program – Kalibo</span>
+          </button>
+          <button class="completed-export-btn" onclick="exportCompletedPatients()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+        <div class="completed-sub">
+          <span id="completed-prog-loc">Andagao, Kalibo, Aklan</span>
+          <span>•</span>
+          <span id="completed-prog-date">2026-03-30 09:00</span>
+        </div>
+        <div class="completed-status-row">
+          <div class="completed-status-dot" id="completed-status-dot" style="background:#27ae60"></div>
+          <span class="completed-status-label" id="completed-status-label">Status: Completed</span>
+          <span class="completed-status-sub" id="completed-status-sub">Read-only monitoring view</span>
+        </div>
+      </div>
+      <div class="completed-stat-row">
+        <div class="completed-stat-box"><div class="completed-stat-label">Total Patients</div><div class="completed-stat-value" id="cstat-total">0</div></div>
+        <div class="completed-stat-box"><div class="completed-stat-label">Normal</div><div class="completed-stat-value green-text" id="cstat-normal">0</div></div>
+        <div class="completed-stat-box"><div class="completed-stat-label">Presumptive TB</div><div class="completed-stat-value red" id="cstat-presumptive">0</div></div>
+      </div>
+      <div id="upcoming-banner-wrap"></div>
+      <div class="completed-patients-section">
+        <div class="completed-patients-card">
+          <div class="completed-patients-header">
+            <div class="completed-patients-title">Registered Patients</div>
+            <div class="view-only-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              View Only
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="completed-patient-table">
+              <thead><tr><th>#</th><th>Name</th><th>Age / Sex</th><th>Address</th><th>Contact</th><th>Status</th></tr></thead>
+              <tbody id="completed-patient-body"><tr><td colspan="6" style="text-align:center;padding:32px;color:#bbb;font-size:13px">No patients recorded.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGOUT MODAL -->
+  <div id="logout-modal">
+    <div class="logout-card">
+      <div class="logout-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+      <h3>Log Out</h3>
+      <p>Are you sure you want to log out of the CareLink TB Provider Portal?</p>
+      <div class="logout-actions">
+        <button class="btn-cancel-logout" onclick="closeLogoutModal()">Cancel</button>
+        <button class="btn-confirm-logout" onclick="confirmLogout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Yes, Log Out
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INBOX -->
+  <div class="page" id="page-inbox">
+    <div class="inbox-page">
+      <div class="inbox-layout">
+        <div class="inbox-sidebar">
+          <div class="inbox-sidebar-top">
+            <button class="compose-btn" onclick="openComposePopup()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Compose</button>
+            <div class="inbox-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search messages..."></div>
+          </div>
+          <div class="inbox-tabs"><div class="inbox-tab active" onclick="switchTab(this)">Inbox</div><div class="inbox-tab" onclick="switchTab(this)">Sent</div><div class="inbox-tab" onclick="switchTab(this)">Unread</div></div>
+          <div class="inbox-msg-list">
+            <div class="inbox-msg-item" onclick="openMessage(0)"><div class="inbox-msg-sender"><span class="sender-name">ICM ADMIN</span><span class="msg-time">09:00AM</span></div><div class="msg-subject"><span class="unread-dot"></span>Screening Assignment – Barangay 7</div><div class="msg-preview">You have been assigned to conduct TB screening at...</div></div>
+            <div class="inbox-msg-item" onclick="openMessage(1)"><div class="inbox-msg-sender"><span class="sender-name">RHU MALINAO</span><span class="msg-time">02:30PM</span></div><div class="msg-subject">X-Ray Results Ready</div><div class="msg-preview">The X-ray results for batch April 14 are now available...</div></div>
+          </div>
+        </div>
+        <div class="inbox-content" id="inbox-empty"><div class="inbox-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,8 12,14 22,8"/></svg></div><div class="inbox-empty-text">Select a message to read</div><div class="inbox-empty-sub">Choose a conversation from the list on the left to view it.</div></div>
+        <div class="inbox-message-view" id="inbox-message-view">
+          <div class="inbox-msg-view-header"><div class="inbox-msg-view-subject" id="msg-view-subject"></div><div class="inbox-msg-view-meta"><span>From:</span><span class="inbox-msg-view-sender" id="msg-view-sender"></span><span>·</span><span id="msg-view-time"></span></div></div>
+          <div class="inbox-msg-view-body" id="msg-view-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPOSE POPUP -->
+  <div class="compose-popup" id="compose-popup">
+    <div class="compose-popup-header"><span class="compose-popup-title">New Message</span><button class="compose-popup-close" onclick="closeComposePopup()">✕</button></div>
+    <div class="compose-popup-body">
+      <div class="compose-field"><label>TO (RECIPIENT)</label><div class="compose-recipient-box" id="compose-recipient-box" onclick="focusComposeRecipientInput()"><div class="recipient-chips" id="compose-recipient-chips"></div><input type="text" class="compose-recipient-input" id="compose-recipient-input" placeholder="— Select Recipient —" autocomplete="off" onfocus="openComposeRecipientDropdown()" oninput="renderComposeRecipientOptions()" onkeydown="handleComposeRecipientKey(event)"><input type="hidden" id="compose-to"><div class="compose-recipient-dropdown" id="compose-recipient-dropdown"></div></div></div>
+      <div class="compose-field"><label>FROM (SENDER)</label><input type="text" id="compose-from" value="Rumeraz Diagnostic – Service Provider" readonly></div>
+      <div class="compose-field"><label>SUBJECT</label><input type="text" id="compose-subject" placeholder="Message subject"></div>
+      <div class="compose-field"><label>MESSAGE</label><textarea class="compose-msg-area" id="compose-body" placeholder="Write your message here..."></textarea></div>
+    </div>
+    <div class="compose-popup-footer">
+      <div class="compose-attach-row">
+        <button class="compose-attach-btn" onclick="document.getElementById('compose-file-input').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>Attach File</button>
+        <button class="compose-attach-btn" onclick="document.getElementById('compose-image-input').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Attach Image</button>
+        <input type="file" id="compose-file-input" style="display:none" onchange="handleComposeAttach(this,'file')">
+        <input type="file" id="compose-image-input" style="display:none" accept="image/*" onchange="handleComposeAttach(this,'image')">
+      </div>
+      <div id="compose-attachments" style="display:none;font-size:11.5px;color:#888;padding:0 0 4px"></div>
+      <div class="compose-footer-btns">
+        <button class="compose-cancel-btn" onclick="closeComposePopup()">Cancel</button>
+        <button class="compose-send-btn" onclick="sendComposedMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT ACTIVITIES -->
+  <div class="page" id="page-activities">
+    <div class="activities-page">
+      <div class="activities-page-card">
+        <div class="activities-page-header"><div class="activities-page-title">Recent Activities</div><div class="activities-page-sub">A log of all actions performed in the Provider Portal</div></div>
+        <div class="activities-log-table-wrap">
+          <table class="activities-log-table">
+            <thead><tr><th>TIME</th><th>MODULE</th><th>ACTIVITY</th></tr></thead>
+            <tbody>
+              <tr><td class="time-col">Mar 31, 2026 – 09:15 AM</td><td><span class="module-badge">Registration</span></td><td>Registered patient under ACF TB Program – Makato</td></tr>
+              <tr><td class="time-col">Mar 31, 2026 – 09:45 AM</td><td><span class="module-badge">Status Update</span></td><td>Marked Maria D. Santos as Presumptive TB</td></tr>
+              <tr><td class="time-col">Mar 31, 2026 – 10:00 AM</td><td><span class="module-badge">SMS</span></td><td>Sent follow-up SMS alert to 3 patients</td></tr>
+              <tr><td class="time-col">Mar 30, 2026 – 02:30 PM</td><td><span class="module-badge">Registration</span></td><td>Registered patient under ACF TB Program – Banga</td></tr>
+              <tr><td class="time-col">Mar 31, 2026 – 09:15 AM</td><td><span class="module-badge">Registration</span></td><td>Registered patient under ACF TB Program – Banga</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS PAGE -->
+  <div class="page" id="page-notif-page">
+    <div class="notif-page">
+      <div class="notif-page-card">
+        <div class="notif-page-header"><div><div class="notif-page-title">Notifications</div><div class="notif-page-sub">All alerts and updates for your portal</div></div><button class="mark-all-btn" onclick="markAllPageNotifs()">Mark All as Read</button></div>
+        <div class="notif-page-list">
+          <div class="notif-page-item unread"><div class="notif-page-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="notif-page-content"><div class="notif-page-item-title">Presumptive TB Flagged <span class="notif-unread-pill">NEW</span></div><div class="notif-page-item-body">Maria D. Santos was flagged as Presumptive TB during screening at ACF TB Program – Banga.</div><div class="notif-page-item-time">Mar 31, 2026 – 09:45 AM</div></div></div>
+          <div class="notif-page-item unread"><div class="notif-page-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="#27ae60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg></div><div class="notif-page-content"><div class="notif-page-item-title">New Screening Session Started <span class="notif-unread-pill">NEW</span></div><div class="notif-page-item-body">ACF TB Program – Banga is now active. 12 patients screened so far.</div><div class="notif-page-item-time">Mar 31, 2026 – 09:00 AM</div></div></div>
+          <div class="notif-page-item"><div class="notif-page-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,8 12,14 22,8"/></svg></div><div class="notif-page-content"><div class="notif-page-item-title">Message from ICM Admin</div><div class="notif-page-item-body">Your assignment for Barangay 7 screening has been confirmed.</div><div class="notif-page-item-time">Mar 30, 2026 – 08:00 AM</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT PAGE -->
+  <div class="page" id="page-account">
+    <div class="account-page">
+      <div class="page-title-block">My Profile</div>
+      <div class="account-header-card">
+        <div class="account-profile-row">
+          <div class="account-avatar-wrap">
+            <div class="account-avatar" id="account-avatar-el"><span class="account-avatar-initials" id="account-avatar-initials">DR</span></div>
+            <div class="account-avatar-edit" onclick="document.getElementById('avatar-upload').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+            <input type="file" id="avatar-upload" style="display:none" accept="image/*" onchange="updateAvatar(this)">
+          </div>
+          <div class="account-name-block">
+            <div class="account-display-name" id="profile-display-name">Rumeraz Diagnostic</div>
+            <div class="account-display-role"><span class="account-role-badge" id="profile-display-role">Service Provider</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="account-info-card">
+        <div class="account-info-title">Account Information</div>
+        <div class="account-info-grid">
+          <div class="account-info-row"><label class="account-info-label">Full Name</label><input class="account-info-input" id="profile-fullname" type="text" value="Rumeraz Diagnostic" placeholder="Enter your name"></div>
+          <div class="account-info-row"><label class="account-info-label">Provider ID</label><input class="account-info-input" type="text" value="PRV-0001" readonly></div>
+          <div class="account-info-row"><label class="account-info-label">Role</label><input class="account-info-input" type="text" value="Service Provider" readonly></div>
+          <div class="account-info-row"><label class="account-info-label">Organization</label><input class="account-info-input" id="profile-org" type="text" value="CareLink TB Services"></div>
+          <div class="account-info-row"><label class="account-info-label">Email Address</label><input class="account-info-input" id="profile-email" type="email" value="rumeraz@carelink.ph"></div>
+          <div class="account-info-row"><label class="account-info-label">Contact Number</label><input class="account-info-input" id="profile-phone" type="text" value="+63 9xxxxxxxxx"></div>
+        </div>
+        <div class="account-btn-row"><button class="account-save-btn" onclick="saveProfile()">Save Changes</button></div>
+      </div>
+
+      <div class="change-password-card">
+        <div class="change-password-header">
+          <div>
+            <div class="change-password-title">Password &amp; Security</div>
+            <div class="change-password-sub">Update your account password regularly to keep your CareLink TB account secure.</div>
+          </div>
+          <button type="button" class="change-password-btn" onclick="openChangePasswordModal()">Change Password</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="change-password-modal-overlay" id="change-password-modal" aria-hidden="true">
+  <div class="change-password-modal" role="dialog" aria-modal="true" aria-labelledby="change-password-title">
+    <h3 id="change-password-title">Change Password</h3>
+    <p>Enter your current password and choose a new password for your account.</p>
+    <div class="cp-field"><label for="cp-current-password">Current Password</label><input type="password" id="cp-current-password" autocomplete="current-password" placeholder="Enter current password"></div>
+    <div class="cp-field"><label for="cp-new-password">New Password</label><input type="password" id="cp-new-password" autocomplete="new-password" placeholder="At least 8 characters"></div>
+    <div class="cp-field"><label for="cp-confirm-password">Confirm New Password</label><input type="password" id="cp-confirm-password" autocomplete="new-password" placeholder="Re-enter new password"></div>
+    <div class="change-password-error" id="change-password-error"></div>
+    <div class="change-password-actions"><button type="button" class="cp-cancel-btn" onclick="closeChangePasswordModal()">Cancel</button><button type="button" class="cp-save-btn" onclick="saveChangedPassword()">Save Password</button></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-icon" id="modal-icon"><svg id="modal-svg" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></svg></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-btn-group" id="modal-btn-group"></div>
+  </div>
+</div>
+
+<script>
+/* ══ PROGRAMS DATA ══ */
+const programs = [
+  {id:0, name:'ACF TB Program – Kalibo', loc:'Andagao, Kalibo, Aklan',   date:'2026-03-30 09:00 AM', status:'completed', patients:'110 Registered'},
+  {id:1, name:'ACF TB Program – Banga',  loc:'Toralba, Banga, Aklan',    date:'2026-05-02 09:00 AM', status:'active',    patients:'12 Registered'},
+  {id:2, name:'ACF TB Program – Makato', loc:'Cayangwan, Makato, Aklan', date:'2026-06-15 09:00 AM', status:'upcoming',  patients:'0 Registered'},
+];
+
+/* Program list — mirrors the ICM portal program module (tabs + card layout).
+   Provider difference: cards open the registration/screening flow rather than
+   the ICM read-only monitor view, and there is no create/archive action. */
+let currentProgFilter = 'all';
+
+function renderPrograms(filter=''){
+  const pl = document.getElementById('prog-list');
+  const q = (filter||'').toLowerCase();
+  const src = q ? programs.filter(p=>p.name.toLowerCase().includes(q)||p.loc.toLowerCase().includes(q)) : programs;
+  const norm = s => s==='draft' ? 'upcoming' : s;
+  const filtered = currentProgFilter==='all' ? src : src.filter(p=>norm(p.status)===currentProgFilter);
+  if(!filtered.length){
+    pl.innerHTML='<div style="text-align:center;padding:48px;color:#bbb;font-size:14px">No programs found.</div>';
+    return;
+  }
+  pl.innerHTML = filtered.map(p=>{
+    const status = norm(p.status);
+    const label = status.charAt(0).toUpperCase()+status.slice(1);
+    return `
+    <div class="prog-card ${status==='active'?'active-prog':''}" onclick="openProgram(${p.id})">
+      <div class="prog-info">
+        <div class="prog-name-row"><span class="prog-name">${p.name}</span><span class="prog-badge ${status}">${label}</span></div>
+        <div class="prog-loc-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.loc}</div>
+      </div>
+      <div class="prog-meta-row">
+        <div class="prog-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>${p.date}</span></div>
+        <div class="prog-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>${p.patients}</span></div>
+      </div>
+      <div class="prog-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>`;
+  }).join('');
+}
+
+function switchProgTab(el,status){
+  currentProgFilter = status;
+  document.querySelectorAll('.prog-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderPrograms(document.querySelector('#page-program .toolbar-search input')?.value || '');
+}
+renderPrograms();
+function filterPrograms(q){ renderPrograms(q); }
+
+/* ══ SCREENING PATIENTS ══ */
+let screeningPatients = [
+  {num:'001', name:'JUAN A. DELA CRUZ', contact:'09998134769', birthday:'1980-11-14', age:45, sex:'M', address:'Agbanawan, Banga, Aklan', status:'Normal', notified:false},
+  {num:'002', name:'MARIA D. SANTOS',   contact:'09456732458', birthday:'1993-07-22', age:32, sex:'F', address:'Bandiangan, Banga, Aklan', status:'Presumptive TB', notified:false},
+];
+let currentProgram = null;
+
+function openProgram(id){
+  const p = programs[id];
+  currentProgram = p;
+
+  if(p.status === 'upcoming'){
+    // Show completed-style view for upcoming
+    document.getElementById('completed-prog-name').textContent = p.name;
+    document.getElementById('completed-prog-loc').textContent  = p.loc;
+    document.getElementById('completed-prog-date').textContent = p.date;
+    document.getElementById('cstat-total').textContent        = '0';
+    document.getElementById('cstat-normal').textContent       = '0';
+    document.getElementById('cstat-presumptive').textContent  = '0';
+    document.getElementById('completed-status-dot').style.background = '#6366f1';
+    document.getElementById('completed-status-label').textContent = 'Status: Upcoming';
+    document.getElementById('completed-status-sub').textContent  = 'This program has not started yet';
+    document.getElementById('completed-patient-body').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#bbb;font-size:13px">No patients registered yet — program has not started.</td></tr>';
+    document.getElementById('upcoming-banner-wrap').innerHTML = `
+      <div class="upcoming-banner">
+        <div class="upcoming-banner-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div>
+          <div class="upcoming-banner-title">Scheduled Program</div>
+          <div class="upcoming-banner-body">This program is scheduled for <strong>${p.date}</strong>. Registration will be available once the activity date begins.</div>
+        </div>
+      </div>`;
+    navigate('completed');
+    document.getElementById('page-title').textContent = p.name;
+    return;
+  }
+
+  if(p.status === 'completed'){
+    const demoCompleted = [
+      {num:'001',name:'PEDRO M. GARCIA',   age:55,sex:'M',address:'Andagao, Kalibo',contact:'09171234567',status:'Normal'},
+      {num:'002',name:'ANA R. VILLANUEVA', age:42,sex:'F',address:'Kalibo Proper',    contact:'09281234567',status:'Normal'},
+    ];
+    document.getElementById('completed-prog-name').textContent = p.name;
+    document.getElementById('completed-prog-loc').textContent  = p.loc;
+    document.getElementById('completed-prog-date').textContent = p.date;
+    document.getElementById('cstat-total').textContent        = demoCompleted.length;
+    document.getElementById('cstat-normal').textContent       = demoCompleted.filter(pt=>pt.status==='Normal').length;
+    document.getElementById('cstat-presumptive').textContent  = demoCompleted.filter(pt=>pt.status==='Presumptive TB').length;
+    document.getElementById('completed-status-dot').style.background = '#27ae60';
+    document.getElementById('completed-status-label').textContent = 'Status: Completed';
+    document.getElementById('completed-status-sub').textContent  = 'Read-only monitoring view';
+    document.getElementById('upcoming-banner-wrap').innerHTML = '';
+    document.getElementById('completed-patient-body').innerHTML = demoCompleted.map(pt=>`
+      <tr>
+        <td>${pt.num}</td><td class="pt-name">${pt.name}</td><td>${pt.age} / ${pt.sex}</td>
+        <td>${pt.address}</td><td>${pt.contact}</td>
+        <td><span class="${pt.status==='Normal'?'status-pill-normal':'status-pill-presumptive'}">${pt.status}</span></td>
+      </tr>`).join('');
+    navigate('completed');
+    document.getElementById('page-title').textContent = p.name;
+    return;
+  }
+
+  // Active
+  document.getElementById('screening-prog-name').textContent = p.name;
+  document.getElementById('screening-prog-loc').textContent  = p.loc;
+  document.getElementById('screening-prog-date').textContent = p.date;
+  renderPatientList();
+  navigate('screening');
+  document.getElementById('page-title').textContent = 'Screening Registration';
+}
+
+function renderPatientList(){
+  const tbody = document.getElementById('patient-list-body');
+  if(!tbody) return;
+  if(!screeningPatients.length){
+    tbody.innerHTML=`<tr><td colspan="5"><div class="empty-patients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><p>No patients registered yet</p></div></td></tr>`;
+    document.getElementById('total-patients-count').textContent='0';
+    document.getElementById('presump-count').textContent='0';
+    return;
+  }
+  tbody.innerHTML = screeningPatients.map((p,i)=>`
+    <tr>
+      <td style="font-weight:600;color:#888">${p.num}</td>
+      <td><div class="patient-name">${p.name}</div><div class="patient-contact">${p.contact}</div></td>
+      <td><div class="patient-age">${p.age} / ${p.sex}</div><div class="patient-addr">${p.address}</div></td>
+      <td><span class="${p.status==='Presumptive TB'?'status-presump':'status-normal'}">${p.status}</span></td>
+      <td><div class="action-col">
+        <button class="action-warn-btn ${p.status==='Presumptive TB'?'active':''}" onclick="confirmTogglePresump(${i})" title="Mark Presumptive TB">
+          <svg viewBox="0 0 24 24" fill="${p.status==='Presumptive TB'?'#c0392b':'none'}" stroke="${p.status==='Presumptive TB'?'#c0392b':'#e67e22'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </button>
+        <button class="action-notify-btn ${p.notified?'sent':''}" ${p.notified?'disabled':''} onclick="confirmNotifyPatient(${i})" title="${p.notified?'Text Message Sent':'Notify Patient via Text Message'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </button>
+        <button class="action-more-btn" onclick="removePatient(${i})">&times;</button>
+      </div></td>
+    </tr>`).join('');
+  document.getElementById('total-patients-count').textContent = screeningPatients.length;
+  document.getElementById('presump-count').textContent = screeningPatients.filter(p=>p.status==='Presumptive TB').length;
+}
+
+function calculateAge(birthday){
+  const b=new Date(birthday+'T00:00:00');
+  const today=new Date();
+  let age=today.getFullYear()-b.getFullYear();
+  const m=today.getMonth()-b.getMonth();
+  if(m<0||(m===0&&today.getDate()<b.getDate()))age--;
+  return age;
+}
+function formatBirthday(birthday){
+  const b=new Date(birthday+'T00:00:00');
+  return b.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+}
+function addPatient(){
+  const name=document.getElementById('reg-name').value.trim();
+  const birthday=document.getElementById('reg-birthday').value;
+  const sex=document.getElementById('reg-sex').value;
+  const address=document.getElementById('reg-address').value.trim();
+  const contact=document.getElementById('reg-contact').value.trim();
+  if(!name||!birthday||!address||!contact){showModal({type:'confirm',title:'Missing Fields',body:'Please fill in all fields before adding a patient.',buttons:[{label:'OK',cls:'primary',action:closeModal}]});return;}
+  if(new Date(birthday+'T00:00:00')>new Date()){showModal({type:'confirm',title:'Invalid Birthday',body:'Birthday cannot be a future date.',buttons:[{label:'OK',cls:'primary',action:closeModal}]});return;}
+  const num=String(screeningPatients.length+1).padStart(3,'0');
+  screeningPatients.push({num,name:name.toUpperCase(),contact,birthday,age:calculateAge(birthday),sex:sex==='Male'?'M':'F',address,status:'Normal',notified:false});
+  clearForm();renderPatientList();
+  showModal({type:'success',title:'Patient Added!',body:`${name} has been successfully registered.`,buttons:[{label:'OK',cls:'ok',action:closeModal}]});
+}
+function clearForm(){['reg-name','reg-birthday','reg-address','reg-contact'].forEach(id=>document.getElementById(id).value='');document.getElementById('reg-sex').value='Male';}
+function confirmTogglePresump(i){
+  const p=screeningPatients[i];
+  const marking=p.status!=='Presumptive TB';
+  showModal({type:'confirm',title:marking?'Mark as Presumptive TB?':'Unmark Presumptive TB?',body:marking?`Mark ${p.name} as Presumptive TB?`:`Unmark ${p.name} as Presumptive TB and set status back to Normal?`,buttons:[{label:'Cancel',cls:'secondary',action:closeModal},{label:marking?'Mark':'Unmark',cls:'primary',action:()=>{togglePresump(i);closeModal();}}]});
+}
+function togglePresump(i){screeningPatients[i].status=screeningPatients[i].status==='Presumptive TB'?'Normal':'Presumptive TB';renderPatientList();}
+function confirmNotifyPatient(i){
+  const p=screeningPatients[i];
+  if(p.notified)return;
+  showModal({type:'confirm',title:'Send Text Message?',body:`Send an automated text message notification to ${p.name} (${p.contact})?`,buttons:[{label:'Cancel',cls:'secondary',action:closeModal},{label:'Send',cls:'primary',action:()=>{sendPatientNotification(i);closeModal();}}]});
+}
+function sendPatientNotification(i){
+  const p=screeningPatients[i];
+  if(p.notified)return;
+  p.notified=true;
+  renderPatientList();
+  showModal({type:'success',title:'Patient Notified',body:`An automated text message has been sent to ${p.name}.`,buttons:[{label:'OK',cls:'ok',action:closeModal}]});
+}
+function removePatient(i){
+  const name=screeningPatients[i].name;
+  showModal({type:'confirm',title:'Remove Patient',body:`Remove ${name} from the list?`,buttons:[{label:'Cancel',cls:'secondary',action:closeModal},{label:'Remove',cls:'primary',action:()=>{screeningPatients.splice(i,1);screeningPatients.forEach((p,j)=>p.num=String(j+1).padStart(3,'0'));renderPatientList();closeModal();}}]});
+}
+function filterPatientList(q){document.querySelectorAll('#patient-list-body tr').forEach(r=>{if(r.cells.length<2)return;r.style.display=r.cells[1].textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
+function exportPatients(){
+  if(!screeningPatients.length){showModal({type:'confirm',title:'Nothing to Export',body:'No patients registered yet.',buttons:[{label:'OK',cls:'primary',action:closeModal}]});return;}
+  const rows=[['#','Name','Contact','Birthday','Age','Sex','Address','Status'],...screeningPatients.map(p=>[p.num,p.name,p.contact,p.birthday||'',p.age,p.sex,p.address,p.status])];
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv,'+encodeURIComponent(csv);a.download='screening-patients.csv';a.click();
+}
+function finishSession(){
+  showModal({type:'confirm',title:'Finish Session?',body:'Are you sure you want to finish this screening session?',buttons:[{label:'Cancel',cls:'secondary',action:closeModal},{label:'Finish',cls:'primary',action:()=>{
+    closeModal();if(currentProgram){currentProgram.status='completed';currentProgram.patients=screeningPatients.length+' Registered';}
+    navigate('program');renderPrograms();
+    showModal({type:'success',title:'Session Finished!',body:'The screening session has been completed.',buttons:[{label:'OK',cls:'ok',action:closeModal}]});
+  }}]});
+}
+
+/* ══ NAVIGATE ══ */
+const pageTitles={dashboard:'Dashboard',program:'Program',screening:'Screening Registration',completed:'Program Details',inbox:'Inbox',activities:'Recent Activity','notif-page':'Notifications',account:'Profile'};
+function navigate(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const t=document.getElementById('page-'+page);if(t)t.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[page]||page;
+  document.querySelectorAll('.nav-list>li').forEach(li=>li.classList.remove('active'));
+  const ni=document.querySelector(`.nav-list>li[data-page="${page}"]`);if(ni)ni.classList.add('active');
+  closeNotifPanel();
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('visible');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('visible');}
+function toggleNotifPanel(e){e.stopPropagation();document.getElementById('notif-panel').classList.toggle('visible');}
+function closeNotifPanel(){document.getElementById('notif-panel').classList.remove('visible');}
+function openWelcomeProfileNotification(item){
+  markRead(item);
+  closeNotifPanel();
+  navigate('account');
+}
+function markRead(item){item.classList.remove('unread');item.querySelector('.notif-dot').classList.add('read');updateNotifBadge();}
+function markAllRead(){document.querySelectorAll('.notif-item').forEach(i=>{i.classList.remove('unread');i.querySelector('.notif-dot').classList.add('read');});updateNotifBadge();}
+function updateNotifBadge(){const n=document.querySelectorAll('.notif-item.unread').length;document.getElementById('notif-badge').style.display=n?'block':'none';}
+function markAllPageNotifs(){document.querySelectorAll('.notif-page-item').forEach(i=>{i.classList.remove('unread');const pill=i.querySelector('.notif-unread-pill');if(pill)pill.remove();});markAllRead();}
+document.addEventListener('click',e=>{if(!e.target.closest('.notif-btn')&&!e.target.closest('.notif-panel'))closeNotifPanel();});
+function showModal({type,title,body,buttons}){
+  const overlay=document.getElementById('modal-overlay');
+  const iconEl=document.getElementById('modal-icon'),svgEl=document.getElementById('modal-svg');
+  if(type==='success'){iconEl.className='modal-icon success';svgEl.setAttribute('stroke','#27ae60');svgEl.innerHTML='<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/>';}
+  else{iconEl.className='modal-icon confirm';svgEl.setAttribute('stroke','#e67e22');svgEl.innerHTML='<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>';}
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').textContent=body;
+  const g=document.getElementById('modal-btn-group');g.innerHTML='';
+  buttons.forEach(b=>{const btn=document.createElement('button');btn.className='modal-btn '+b.cls;btn.textContent=b.label;btn.onclick=b.action;g.appendChild(btn);});
+  overlay.classList.add('visible');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('visible');}
+const inboxMessages=[
+  {sender:'ICM ADMIN',subject:'Screening Assignment – Barangay 7',time:'09:00 AM · Apr 17, 2026',body:'You have been assigned to conduct the Community TB Screening at Barangay 7 Health Center on April 20, 2026 at 8:00 AM. Please ensure all screening equipment is prepared and calibrated. Coordinate with the RHU staff upon arrival. For any concerns, contact the ICM Admin Office. Thank you.'},
+  {sender:'RHU MALINAO',subject:'X-Ray Results Ready',time:'02:30 PM · Apr 16, 2026',body:'The chest X-ray results for the batch processed on April 14, 2026 are now available for pickup at the RHU Records Office. Please bring a valid ID and the patient batch reference number. Results will only be released to authorized personnel.'},
+];
+function openMessage(i){
+  const msg=inboxMessages[i];
+  document.getElementById('inbox-empty').style.display='none';
+  const view=document.getElementById('inbox-message-view');view.classList.add('visible');
+  document.getElementById('msg-view-subject').textContent=msg.subject;
+  document.getElementById('msg-view-sender').textContent=msg.sender;
+  document.getElementById('msg-view-time').textContent=msg.time;
+  document.getElementById('msg-view-body').textContent=msg.body;
+  document.querySelectorAll('.inbox-msg-item').forEach((el,idx)=>{el.classList.toggle('active',idx===i);if(idx===i)el.querySelector('.unread-dot')?.remove();});
+}
+function switchTab(el){document.querySelectorAll('.inbox-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
+
+const composeRecipientOptions=['Ronnie Solis Sr - ICM Coordinator','RHU Makato','RHU Banga','Drew Ramos – ICM Coordinator', 'Admin'];
+let selectedComposeRecipients=[];
+function composeEsc(text){return String(text).replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));}
+function focusComposeRecipientInput(){document.getElementById('compose-recipient-input')?.focus();}
+function addComposeRecipientValue(value){const name=String(value||'').trim();if(!name)return;if(!selectedComposeRecipients.some(r=>r.toLowerCase()===name.toLowerCase()))selectedComposeRecipients.push(name);const input=document.getElementById('compose-recipient-input');if(input){input.value='';input.focus();}renderComposeRecipients();openComposeRecipientDropdown();}
+function removeComposeRecipient(index){selectedComposeRecipients.splice(index,1);renderComposeRecipients();}
+function renderComposeRecipients(){const chips=document.getElementById('compose-recipient-chips');const hidden=document.getElementById('compose-to');const input=document.getElementById('compose-recipient-input');if(chips)chips.innerHTML=selectedComposeRecipients.map((r,i)=>`<span class="recipient-chip">${composeEsc(r)}<button type="button" onclick="removeComposeRecipient(${i})" aria-label="Remove ${composeEsc(r)}">×</button></span>`).join('');if(hidden)hidden.value=selectedComposeRecipients.join(', ');if(input)input.placeholder=selectedComposeRecipients.length?'':'— Select Recipient —';renderComposeRecipientOptions();}
+function getComposeRecipientSuggestions(){
+  const seen = new Set();
+  const suggestions = [];
+
+  const push = (name, meta) => {
+    name = String(name || '').trim();
+    if (!name) return;
+
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    suggestions.push({
+      name,
+      meta: meta || 'Suggested account'
+    });
+  };
+
+  composeRecipientOptions.forEach(name => {
+    push(name, 'Suggested account');
+  });
+
+  return suggestions;
+}
+function composeRecipientArg(value){return encodeURIComponent(String(value||''));}
+function openComposeRecipientDropdown(){renderComposeRecipientOptions();document.getElementById('compose-recipient-dropdown')?.classList.add('open');document.getElementById('compose-recipient-box')?.classList.add('dropdown-open');}
+function closeComposeRecipientDropdown(){document.getElementById('compose-recipient-dropdown')?.classList.remove('open');document.getElementById('compose-recipient-box')?.classList.remove('dropdown-open');}
+function addComposeRecipientFromEncoded(value){addComposeRecipientValue(decodeURIComponent(value));}
+function renderComposeRecipientOptions(){
+  const menu=document.getElementById('compose-recipient-dropdown');
+  const input=document.getElementById('compose-recipient-input');
+  const box=document.getElementById('compose-recipient-box');
+  if(!menu)return;
+  const typed=(input?.value||'').trim();
+  const q=typed.toLowerCase();
+  const suggestions=getComposeRecipientSuggestions();
+  const isSelected=name=>selectedComposeRecipients.some(x=>x.toLowerCase()===String(name||'').toLowerCase());
+  const available=suggestions.filter(item=>!isSelected(item.name));
+  const list=(q?available.filter(item=>item.name.toLowerCase().includes(q)||String(item.meta||'').toLowerCase().includes(q)):available);
+  let html='<div class="compose-recipient-dropdown-header">Suggested accounts</div>';
+  if(list.length){
+    html+=list.map(item=>`<div class="compose-recipient-option" onmousedown="event.preventDefault()" onclick="addComposeRecipientFromEncoded('${composeRecipientArg(item.name)}')"><div class="compose-recipient-option-main"><span class="compose-recipient-option-name">${composeEsc(item.name)}</span><span class="compose-recipient-option-meta">${composeEsc(item.meta||'Suggested account')}</span></div><span class="compose-recipient-option-add">Add</span></div>`).join('');
+  }else{
+    html+=`<div class="compose-recipient-empty">${q?'No matching suggested account found.':'No more suggested accounts.'}</div>`;
+  }
+  if(typed&&!isSelected(typed)&&!suggestions.some(item=>item.name.toLowerCase()===typed.toLowerCase())){
+    html+=`<div class="compose-recipient-option" onmousedown="event.preventDefault()" onclick="addComposeRecipientFromEncoded('${composeRecipientArg(typed)}')"><div class="compose-recipient-option-main"><span class="compose-recipient-option-name">${composeEsc(typed)}</span><span class="compose-recipient-option-meta">Typed recipient</span></div><span class="compose-recipient-option-add">Add</span></div>`;
+  }
+  menu.innerHTML=html;
+  if(document.activeElement===input){
+    menu.classList.add('open');
+    box?.classList.add('dropdown-open');
+  }
+}
+function handleComposeRecipientKey(e){if(e.key==='Enter'||e.key===','){e.preventDefault();addComposeRecipientValue(e.target.value);}else if(e.key==='Backspace'&&!e.target.value&&selectedComposeRecipients.length){selectedComposeRecipients.pop();renderComposeRecipients();}else if(e.key==='Escape'){closeComposeRecipientDropdown();}}
+document.addEventListener('click',function(e){if(!e.target.closest('#compose-recipient-box'))closeComposeRecipientDropdown();});
+function resetComposeRecipients(){selectedComposeRecipients=[];const input=document.getElementById('compose-recipient-input');if(input)input.value='';renderComposeRecipients();closeComposeRecipientDropdown();}
+function openComposePopup(){resetComposeRecipients();document.getElementById('compose-popup').classList.add('visible');}
+function closeComposePopup(){document.getElementById('compose-popup').classList.remove('visible');}
+function sendComposedMessage(){
+  const recipients=[...selectedComposeRecipients];
+  const subject=document.getElementById('compose-subject').value.trim();
+  const body=document.getElementById('compose-body').value.trim();
+  if(!recipients.length){showModal({type:'confirm',title:'No Recipient',body:'Please select at least one recipient.',buttons:[{label:'OK',cls:'primary',action:closeModal}]});return;}
+  if(!subject||!body){showModal({type:'confirm',title:'Missing Fields',body:'Please fill in all fields.',buttons:[{label:'OK',cls:'primary',action:closeModal}]});return;}
+  closeComposePopup();
+  resetComposeRecipients();document.getElementById('compose-subject').value='';document.getElementById('compose-body').value='';
+  showModal({type:'success',title:'Message Sent!',body:`Your message "${subject}" has been sent to ${recipients.length} recipient(s): ${recipients.join(', ')}.`,buttons:[{label:'OK',cls:'ok',action:closeModal}]});
+}
+function openLogoutModal(){document.getElementById('logout-modal').classList.add('active');}
+function closeLogoutModal(){document.getElementById('logout-modal').classList.remove('active');}
+document.getElementById('logout-modal').addEventListener('click',function(e){if(e.target===this)closeLogoutModal();});
+function confirmLogout(){
+  closeLogoutModal();
+  showModal({
+    type:'success',
+    title:'Logged Out Successfully',
+    body:'You have been logged out.',
+    buttons:[
+      {
+        label:'OK',
+        cls:'ok',
+        action:()=>{
+          closeModal();
+          window.location.href = 'landing_page.html';
+        }
+      }
+    ]
+  });
+
+  setTimeout(()=>{
+    window.location.href = 'landing_page.html';
+  }, 2500);
+}
+function saveProfile(){
+  const name=document.getElementById('profile-fullname').value.trim();
+  if(!name){showModal({type:'confirm',title:'Invalid',body:'Full name cannot be empty.',buttons:[{label:'OK',cls:'primary',action:closeModal}]});return;}
+  document.getElementById('profile-display-name').textContent=name;
+  document.querySelector('.user-name').textContent=name;
+  const parts=name.split(' ').filter(Boolean);
+  const initials=parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].substring(0,2);
+  const el=document.getElementById('account-avatar-initials');if(el)el.textContent=initials.toUpperCase();
+  showModal({type:'success',title:'Profile Updated!',body:'Your profile information has been saved.',buttons:[{label:'OK',cls:'ok',action:closeModal}]});
+}
+let composeAttachments=[];
+function handleComposeAttach(input,type){
+  if(!input.files[0])return;
+  composeAttachments.push(input.files[0].name);
+  const el=document.getElementById('compose-attachments');el.style.display='block';el.innerHTML='📎 '+composeAttachments.join(' · ');input.value='';
+}
+function updateAvatar(input){
+  if(!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('account-avatar-el').innerHTML=`<img src="${e.target.result}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    document.getElementById('topbar-avatar').innerHTML=`<img src="${e.target.result}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function exportCompletedPatients(){showModal({type:'success',title:'Export Started',body:'Patient list is being exported as CSV.',buttons:[{label:'OK',cls:'ok',action:closeModal}]});}
+
+renderPatientList();
+updateNotifBadge();
+(function(){const bd=document.getElementById('reg-birthday');if(bd){const t=new Date();bd.max=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}})();
+
+
+/* ══ CHANGE PASSWORD FEATURE ══ */
+const CHANGE_PASSWORD_STORAGE_KEY = 'carelink_provider_password';
+const CHANGE_PASSWORD_DEFAULT = 'provider12345';
+function getCurrentPortalPassword(){
+  let savedPassword = localStorage.getItem(CHANGE_PASSWORD_STORAGE_KEY);
+  if(!savedPassword){localStorage.setItem(CHANGE_PASSWORD_STORAGE_KEY, CHANGE_PASSWORD_DEFAULT);savedPassword = CHANGE_PASSWORD_DEFAULT;}
+  return savedPassword;
+}
+function openChangePasswordModal(){
+  getCurrentPortalPassword();
+  const modal = document.getElementById('change-password-modal');
+  const error = document.getElementById('change-password-error');
+  if(error){error.textContent = '';error.classList.remove('visible');}
+  ['cp-current-password','cp-new-password','cp-confirm-password'].forEach(id=>{const input = document.getElementById(id);if(input) input.value = '';});
+  if(modal){modal.classList.add('visible');modal.setAttribute('aria-hidden','false');setTimeout(()=>document.getElementById('cp-current-password')?.focus(),80);}
+}
+function closeChangePasswordModal(){
+  const modal = document.getElementById('change-password-modal');
+  if(modal){modal.classList.remove('visible');modal.setAttribute('aria-hidden','true');}
+  const error = document.getElementById('change-password-error');
+  if(error){error.textContent = '';error.classList.remove('visible');}
+}
+function showChangePasswordError(message){
+  const error = document.getElementById('change-password-error');
+  if(error){error.textContent = message;error.classList.add('visible');}
+}
+function validateChangePassword(){
+  const currentPassword = document.getElementById('cp-current-password')?.value || '';
+  const newPassword = document.getElementById('cp-new-password')?.value || '';
+  const confirmPassword = document.getElementById('cp-confirm-password')?.value || '';
+  const storedPassword = getCurrentPortalPassword();
+  if(!currentPassword.trim()) return {valid:false,message:'Current password is required.'};
+  if(currentPassword !== storedPassword) return {valid:false,message:'Current password is incorrect.'};
+  if(!newPassword.trim()) return {valid:false,message:'New password is required.'};
+  if(newPassword.length < 8) return {valid:false,message:'New password must be at least 8 characters.'};
+  if(newPassword === currentPassword) return {valid:false,message:'New password must not be the same as the current password.'};
+  if(newPassword !== confirmPassword) return {valid:false,message:'Confirm password must match the new password.'};
+  return {valid:true,password:newPassword};
+}
+function saveChangedPassword(){
+  const result = validateChangePassword();
+  if(!result.valid){showChangePasswordError(result.message);return;}
+  localStorage.setItem(CHANGE_PASSWORD_STORAGE_KEY, result.password);
+  closeChangePasswordModal();
+  ['cp-current-password','cp-new-password','cp-confirm-password'].forEach(id=>{const input = document.getElementById(id);if(input) input.value = '';});
+  if(typeof showModal === 'function'){
+    showModal({type:'success',title:'Password Changed',body:'Password changed successfully.',buttons:[{label:'OK',cls:'ok',action:closeModal}]});
+  }else{alert('Password changed successfully.');}
+}
+document.addEventListener('keydown', function(e){const modal = document.getElementById('change-password-modal');if(e.key === 'Escape' && modal?.classList.contains('visible')){closeChangePasswordModal();}});
+
+</script>
+</body>
+</html>

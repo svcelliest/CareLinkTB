@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProgramRequest;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
+use App\Models\Location;
 use App\Models\Patient;
 use App\Models\Program;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,12 +26,14 @@ class ProgramController extends Controller
         abort_unless($coordinator instanceof User && $coordinator->role === 'icm', 403);
 
         $programs = $coordinator->createdPrograms()
+            ->with('location')
+            ->whereNull('archived_at')
             ->orderBy('scheduled_at')
             ->get()
             ->map(fn(Program $program) => [
                 'id' => $program->id,
                 'name' => $program->name,
-                'location' => $program->location,
+                'location' => $program->location?->name,
                 'scheduled_at' => $program->scheduled_at->toIso8601String(),
                 'status' => $program->status,
                 'created_at' => $program->created_at->toIso8601String(),
@@ -37,6 +41,9 @@ class ProgramController extends Controller
 
         return Inertia::render('Icm/Programs/Index', [
             'programs' => $programs,
+            'locations' => Location::where('level', 'municipality')
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -47,6 +54,8 @@ class ProgramController extends Controller
         abort_unless($coordinator instanceof User && $coordinator->role === 'icm', 403);
 
         $programs = $coordinator->createdPrograms()
+            ->with('location')
+            ->whereNull('archived_at')
             ->orderBy('scheduled_at')
             ->get();
 
@@ -69,7 +78,7 @@ class ProgramController extends Controller
 
                 fputcsv($file, [
                     $escapeForSpreadsheet($program->name),
-                    $escapeForSpreadsheet($program->location),
+                    $escapeForSpreadsheet($program->location?->name ?? ''),
                     $program->scheduled_at->toIso8601String(),
                     $program->status,
                     $program->created_at->toIso8601String(),
@@ -100,7 +109,7 @@ class ProgramController extends Controller
             'program' => [
                 'id' => $program->id,
                 'name' => $program->name,
-                'location' => $program->location,
+                'location' => $program->location?->name,
                 'scheduled_at' => $program->scheduled_at->toIso8601String(),
                 'status' => $program->status,
                 'created_at' => $program->created_at->toIso8601String(),
@@ -130,24 +139,69 @@ class ProgramController extends Controller
 
         abort_unless($coordinator instanceof User && $coordinator->role === 'icm', 403);
 
-        $program = DB::transaction(function () use ($coordinator, $request): Program {
-            $program = $coordinator->createdPrograms()->create([
-                ...$request->validated(),
-                'status' => 'upcoming'
+        try {
+            $program = DB::transaction(function () use ($coordinator, $request): Program {
+                $program = $coordinator->createdPrograms()->create([
+                    ...$request->validated(),
+                    'status' => 'upcoming'
+                ]);
+
+                ActivityLogger::record(
+                    $coordinator,
+                    'program.created',
+                    'Created program',
+                    "{$program->name} was created for {$program->location?->name}.",
+                    ['program_id' => $program->id],
+                    $program,
+                );
+                return $program;
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Store program failed', [
+                'created_by' => $coordinator->id,
+                'payload' => $request->validated(),
+                'exception' => $exception->getMessage(),
             ]);
-
-
-            ActivityLogger::record(
-                $coordinator,
-                'program.created',
-                'Created program',
-                "{$program->name} was created for {$program->location}.",
-                ['program_id' => $program->id],
-                $program,
-            );
-            return $program;
-        });
+            throw $exception;
+        }
 
         return back()->with('success', "Program {$program->name} was created successfully.");
+    }
+
+    public function archive(Request $request, Program $program): RedirectResponse
+    {
+        $coordinator = $request->user();
+
+        abort_unless(
+            $coordinator instanceof User
+                && $coordinator->role === 'icm'
+                && $program->created_by === $coordinator->id,
+            403,
+        );
+        abort_unless($program->status === 'completed' && $program->archived_at === null, 422);
+
+        try {
+            DB::transaction(function () use ($program, $coordinator): void {
+                $program->forceFill(['archived_at' => now()])->save();
+
+                ActivityLogger::record(
+                    $coordinator,
+                    'program.archived',
+                    'Archived program',
+                    "{$program->name} was archived.",
+                    ['program_id' => $program->id],
+                    $program,
+                );
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Program archive failed', [
+                'coordinator_id' => $coordinator->id,
+                'program_id' => $program->id,
+                'exception' => $exception->getMessage(),
+            ]);
+            throw $exception;
+        }
+
+        return back()->with('success', "{$program->name} was archived.");
     }
 }
