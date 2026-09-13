@@ -88,7 +88,7 @@ class RhuController extends Controller
                 'form_type' => $request->validated('form_type'),
                 'patient_code' => $request->validated('patient_id'),
                 'name' => $request->validated('patient_name'),
-                'age' => $request->validated('age'),
+                'date_of_birth' => $request->validated('date_of_birth'),
                 'sex' => $request->validated('sex'),
                 'contact_number' => $request->validated('contact_number'),
                 'address' => $request->validated('address'),

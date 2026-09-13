@@ -33,7 +33,7 @@ class StoreProviderPatientRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string'],
-            'age' => ['required', 'integer', 'min:0', 'max:120'],
+            'date_of_birth' => ['required', 'date', 'before_or_equal:today'],
             'sex' => ['required', 'in:male,female'],
             'address' => ['required', 'string'],
             'contact_number' => ['required', 'string'],

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TreatmentEnrollment extends Model
 {
@@ -54,6 +55,11 @@ class TreatmentEnrollment extends Model
     public function recorder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function treatmentMonitoringRecords(): HasMany
+    {
+        return $this->hasMany(TreatmentMonitoringRecord::class);
     }
 
     /**
