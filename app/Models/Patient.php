@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Patient extends Model
 {
@@ -17,7 +19,7 @@ class Patient extends Model
         'form_type',
         'patient_code',
         'name',
-        'age',
+        'date_of_birth',
         'sex',
         'contact_number',
         'address',
@@ -28,9 +30,24 @@ class Patient extends Model
     protected function casts(): array
     {
         return [
-            'age' => 'integer',
+            'date_of_birth' => 'date',
             'responses' => 'array',
         ];
+    }
+
+    /**
+     * Age is never stored — it's derived from date_of_birth on every read
+     * so it can't go stale between registration and whenever it's viewed.
+     */
+    protected function age(): Attribute
+    {
+        return Attribute::get(function () {
+            if (! $this->date_of_birth) {
+                return null;
+            }
+
+            return $this->date_of_birth->age;
+        });
     }
 
     public function program(): BelongsTo
@@ -46,6 +63,16 @@ class Patient extends Model
     public function treatmentEnrollments(): HasMany
     {
         return $this->hasMany(TreatmentEnrollment::class);
+    }
+
+    public function sputumCollection(): HasOne
+    {
+        return $this->hasOne(SputumCollection::class);
+    }
+
+    public function diagnosticAssessment(): HasOne
+    {
+        return $this->hasOne(DiagnosticAssessment::class);
     }
 
     /**

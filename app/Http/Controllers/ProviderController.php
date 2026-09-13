@@ -144,7 +144,7 @@ class ProviderController extends Controller
     {
         $existing = $program->patients()
             ->where('name', $request->validated('name'))
-            ->where('age', $request->validated('age'))
+            ->whereDate('date_of_birth', $request->validated('date_of_birth'))
             ->where('contact_number', $request->validated('contact_number'))
             ->first();
 
@@ -160,7 +160,7 @@ class ProviderController extends Controller
                 $patient = $program->patients()->create([
                     'form_type' => 'provider_screening',
                     'name' => $request->validated('name'),
-                    'age' => $request->validated('age'),
+                    'date_of_birth' => $request->validated('date_of_birth'),
                     'sex' => $request->validated('sex'),
                     'address' => $request->validated('address'),
                     'contact_number' => $request->validated('contact_number'),
@@ -204,7 +204,7 @@ class ProviderController extends Controller
 
                 $patient->update([
                     'name' => $request->validated('name'),
-                    'age' => $request->validated('age'),
+                    'date_of_birth' => $request->validated('date_of_birth'),
                     'sex' => $request->validated('sex'),
                     'address' => $request->validated('address'),
                     'contact_number' => $request->validated('contact_number'),
@@ -298,6 +298,7 @@ class ProviderController extends Controller
         return [
             'id' => $patient->id,
             'name' => $patient->name,
+            'date_of_birth' => $patient->date_of_birth?->format('Y-m-d'),
             'age' => $patient->age,
             'sex' => $patient->sex === 'male' ? 'Male' : 'Female',
             'address' => $patient->address,
