@@ -32,26 +32,20 @@ class IcmContactTracingController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'municipality' => ['nullable', 'string', 'max:100'],
-            'tracing' => ['nullable', Rule::in(['all', 'filed', 'pending'])],
         ]);
 
         $search = trim($filters['search'] ?? '');
-        $municipality = $filters['municipality'] ?? 'all';
-        $tracing = $filters['tracing'] ?? 'all';
 
         // "Currently under treatment" is the existing open-case scope — a case
         // with no outcome recorded. Closed cases are excluded, which is what
         // keeps completed and lost-to-follow-up patients off this list.
         $base = TreatmentCase::query()->whereOpen();
 
+        // The whole register at once, one row per patient, in the same shape
+        // as the RHU's Patient Tracker: every ACF answer is a column, so the
+        // coordinator reads the filed forms side by side.
         $cases = (clone $base)
-            ->with(['patient', 'contactTracing', 'monitoringEntries', 'dispensingRecords'])
-            ->when($municipality !== 'all', fn (Builder $query) => $query
-                ->where('municipality', $municipality))
-            ->when($tracing === 'filed', fn (Builder $query) => $query->whereHas('contactTracing'))
-            ->when($tracing === 'pending', fn (Builder $query) => $query
-                ->whereDoesntHave('contactTracing'))
+            ->with(['patient', 'contactTracing'])
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $escaped = addcslashes($search, '%_\\');
 
@@ -60,41 +54,77 @@ class IcmContactTracingController extends Controller
                     ->orWhereHas('patient', fn (Builder $patient) => $patient
                         ->where('name', 'like', '%'.$escaped.'%')));
             })
-            ->latest('updated_at')
-            ->paginate(10)
-            ->withQueryString()
-            ->through(fn (TreatmentCase $case) => [
+            ->get()
+            ->sortBy(fn (TreatmentCase $case) => mb_strtolower($case->patient?->name ?? ''))
+            ->values()
+            ->map(fn (TreatmentCase $case, int $index) => [
                 'id' => $case->id,
+                'number' => $index + 1,
                 'case_number' => $case->case_number,
                 'patient_name' => $case->patient?->name ?? '—',
+                'contact_number' => $case->patient?->contact_number,
                 'municipality' => $case->municipality,
-                'treatment_facility' => $case->treatment_facility,
-                'current_month' => $case->currentMonth(),
-                'start_date_label' => $case->treatment_start_date?->format('M j, Y'),
-                'tb_diagnosis' => $case->patient?->tbDiagnosisLabel() ?? '—',
                 'has_tracing' => $case->contactTracing !== null,
+                'tracing' => $this->tracingRow($case),
             ]);
 
         return Inertia::render('Icm/ContactTracing/Index', [
             'cases' => $cases,
-            'filters' => [
-                'search' => $search,
-                'municipality' => $municipality,
-                'tracing' => $tracing,
-            ],
+            'filters' => ['search' => $search],
             'stats' => [
                 'under_treatment' => (clone $base)->count(),
                 'traced' => (clone $base)->whereHas('contactTracing')->count(),
                 'pending' => (clone $base)->whereDoesntHave('contactTracing')->count(),
             ],
-            // Only the municipalities that actually have an open case, so the
-            // filter never offers an option that returns nothing.
-            'municipalities' => (clone $base)
-                ->whereNotNull('municipality')
-                ->distinct()
-                ->orderBy('municipality')
-                ->pluck('municipality'),
+            // The same option lists the RHU's form offers, so the register's
+            // selects show the recorded answer with its exact wording.
+            'options' => [
+                'visit_types' => TreatmentContactTracing::VISIT_TYPES,
+                'yes_no' => TreatmentContactTracing::YES_NO,
+                'taking_meds' => TreatmentContactTracing::TAKING_MEDS,
+                'tpt_reasons' => TreatmentContactTracing::TPT_REASONS,
+            ],
         ]);
+    }
+
+    /**
+     * The filed ACF answers as one flat row of the register — the raw values,
+     * keyed as the RHU's form stores them, so a select can show the recorded
+     * option. Blank when nothing has been filed yet.
+     *
+     * @return array<string, string>
+     */
+    private function tracingRow(TreatmentCase $case): array
+    {
+        $report = $case->contactTracing;
+
+        $text = fn (mixed $value): string => $value === null ? '' : (string) $value;
+
+        return [
+            'patient_address' => $text($report?->patient_address ?? $case->patient?->address),
+            'acf_date' => $report?->acf_date?->toDateString() ?? '',
+            'province' => $text($report?->province),
+            'municipality' => $text($report?->municipality),
+            'community' => $text($report?->community),
+            'registry_no' => $text($report?->registry_no),
+            'phone' => $text($report?->phone ?? $case->patient?->contact_number),
+            'visit_date' => $report?->visit_date?->toDateString() ?? '',
+            'visit_type' => $text($report?->visit_type),
+            'rhu_contacted' => $text($report?->rhu_contacted),
+            'started_medication' => $text($report?->started_medication),
+            'accompaniment' => $text($report?->accompaniment),
+            'household_total' => $text($report?->household_total),
+            'household_symptoms' => $text($report?->household_symptoms),
+            'household_tb' => $text($report?->household_tb),
+            'household_taking_meds' => $text($report?->household_taking_meds),
+            'referral_cards' => $text($report?->referral_cards),
+            'tpt_total' => $text($report?->tpt_total),
+            'tpt_0_to_4' => $text($report?->tpt_0_to_4),
+            'tpt_5_to_14' => $text($report?->tpt_5_to_14),
+            'tpt_15_plus' => $text($report?->tpt_15_plus),
+            'tpt_reason' => $text($report?->tpt_reason),
+            'enumerator' => $text($report?->enumerator),
+        ];
     }
 
     /**

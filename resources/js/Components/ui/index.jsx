@@ -29,6 +29,43 @@ export function Card({ as: Tag = "div", className = "", children, ...rest }) {
     );
 }
 
+/**
+ * KPI tile — a label, a big figure, an optional caption and an accent-coloured
+ * icon with a matching left rule. One component for every summary row in the
+ * ICM portal (dashboard, program record, accounts).
+ */
+export function KpiCard({ label, value, sub, icon, accent, className = "" }) {
+    return (
+        <Card
+            className={cx("flex flex-col gap-2 border-l-4 px-5 py-4", className)}
+            style={{ borderLeftColor: accent.fg }}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <span className="text-[11px] leading-tight font-bold tracking-wide text-muted uppercase">
+                    {label}
+                </span>
+                {icon ? (
+                    <span
+                        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-base"
+                        style={{ background: accent.bg, color: accent.fg }}
+                        aria-hidden="true"
+                    >
+                        {icon}
+                    </span>
+                ) : null}
+            </div>
+            <span className="text-[30px] leading-none font-bold text-ink">{value}</span>
+            {sub ? <span className="text-[11.5px] text-muted">{sub}</span> : null}
+        </Card>
+    );
+}
+
+/** Compact register actions (Enroll Patient / Export File / Edit / Save). */
+export const actionButtonClass =
+    "inline-flex items-center gap-[7px] rounded-md border border-brand bg-brand px-3.5 py-[9px] text-[10.5px] font-bold whitespace-nowrap text-white shadow-[0_2px_5px_rgba(192,57,43,0.16)] hover:border-brand-strong hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50";
+export const secondaryActionButtonClass =
+    "inline-flex items-center gap-[7px] rounded-md border border-line bg-white px-3.5 py-[9px] text-[10.5px] font-bold whitespace-nowrap text-[#555] hover:border-brand hover:text-brand disabled:opacity-60";
+
 const buttonBase =
     "inline-flex items-center justify-center gap-2 rounded-lg text-[13.5px] font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 

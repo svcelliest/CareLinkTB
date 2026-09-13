@@ -32,8 +32,10 @@ function locationOf(archive) {
     return parts.length > 1 ? parts[1].trim() : archive.location.trim();
 }
 
+// Alignment is per column: `text-left` here would beat the Action header's
+// `text-center`, since whichever the stylesheet lists last wins.
 const headClass =
-    "border-b border-line-soft px-5 py-3 text-left text-[11px] font-bold tracking-wide text-[#bbb] uppercase";
+    "border-b border-line-soft px-5 py-3 text-[11px] font-bold tracking-wide text-[#bbb] uppercase";
 const cellClass = "border-b border-[#f8f2f2] px-5 py-3.5 text-[13px] text-[#444]";
 
 function IconButton({ label, tone, onClick, children }) {
@@ -158,12 +160,15 @@ export default function Index({ archives }) {
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
-                                        <th className={headClass}>Activity</th>
-                                        <th className={cx(headClass, "w-40")}>
-                                            Date
+                                        <th className={cx(headClass, "text-left")}>Activity</th>
+                                        <th className={cx(headClass, "w-40 text-left")}>
+                                            Program Date
                                         </th>
-                                        <th className={cx(headClass, "w-72")}>
+                                        <th className={cx(headClass, "w-72 text-left")}>
                                             Location
+                                        </th>
+                                        <th className={cx(headClass, "w-40 text-left")}>
+                                            Archived Date
                                         </th>
                                         {/* Fixed width and centred so the buttons
                                             below sit directly under the label. */}
@@ -197,7 +202,10 @@ export default function Index({ archives }) {
                                             <td className={cellClass}>
                                                 {archive.location}
                                             </td>
-                                            <td className={cx(cellClass, "w-32")}>
+                                            <td className={cellClass}>
+                                                {archive.archived_label}
+                                            </td>
+                                            <td className={cx(cellClass, "w-32 text-center")}>
                                                 <div className="flex items-center justify-center gap-2">
                                                     <IconButton
                                                         label={`Export ${archive.name}`}

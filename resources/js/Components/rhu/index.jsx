@@ -765,3 +765,31 @@ export const registerSelectClass =
 /** Compact text input used inside register cells. */
 export const registerInputClass =
     "w-full min-w-[160px] rounded border border-line bg-white px-2 py-1 text-[11px] text-[#444] outline-none focus:border-brand disabled:cursor-not-allowed disabled:bg-[#f8f8f8] disabled:opacity-70";
+
+/**
+ * The strip above a register table: the counts on the left, and on the right
+ * the controls that act on that table — search, export, an edit flow.
+ *
+ * `badge` names what is counted; `barTotal` lets the bar count something other
+ * than the badge does (the diagnostic tab measures tests, the badge patients).
+ */
+export function TableToolbar({
+    total,
+    label,
+    done,
+    barTotal,
+    badge = "Total # of Patient",
+    children,
+}) {
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line-soft px-5 py-3">
+            <div className="flex flex-wrap items-center gap-3.5">
+                <CountBadge>
+                    {badge}: {total}
+                </CountBadge>
+                <ProgressBar label={label} done={done} total={barTotal ?? total} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">{children}</div>
+        </div>
+    );
+}

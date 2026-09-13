@@ -264,19 +264,18 @@ class RhuPortalTest extends TestCase
     /* ── Patient Tracker: the ownership split ──────────────────────────── */
 
     /**
-     * Diagnostic assessment progress is the two required tests — GXpert (3a)
-     * and DSSM (3b) — so one patient reads 0%, 50% or 100%.
+     * Diagnostic assessment progress is the one required test — GXpert (3a)
+     * or DSSM (3b), never both — so one patient reads 0% or 100%.
      */
-    public function test_diagnostic_progress_counts_the_two_required_tests(): void
+    public function test_diagnostic_progress_counts_the_one_required_test(): void
     {
         $program = $this->program();
         $rhu = $this->rhu();
 
         $cases = [
             [[], 0],
-            [['tested_gene_xpert' => '1'], 50],
-            [['tested_dssm' => '1'], 50],
-            [['tested_gene_xpert' => '1', 'tested_dssm' => '1'], 100],
+            [['tested_gene_xpert' => '1'], 100],
+            [['tested_dssm' => '1'], 100],
         ];
 
         foreach ($cases as [$responses, $expected]) {
@@ -291,22 +290,19 @@ class RhuPortalTest extends TestCase
             $patient->delete();
         }
 
-        // Aggregated across the roster, the tracker counts tests rather than
-        // patients: two patients need four tests, and three of them are done.
+        // Aggregated across the roster, the tracker counts patients tested:
+        // two patients, one of them done.
         $this->patient($program, 'Torralba, Banga, Aklan', [
-            'tested_gene_xpert' => '1',
             'tested_dssm' => '1',
-        ], 'Both Done');
-        $this->patient($program, 'Torralba, Banga, Aklan', [
-            'tested_gene_xpert' => '1',
-        ], 'Half Done');
+        ], 'Done');
+        $this->patient($program, 'Torralba, Banga, Aklan', [], 'Pending');
 
         $this->actingAs($rhu)
             ->get(route('rhu.tracker.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('progress.tests_completed', 3)
-                ->where('progress.tests_total', 4)
+                ->where('progress.tests_completed', 1)
+                ->where('progress.tests_total', 2)
                 ->where('progress.total', 2));
     }
 
@@ -322,7 +318,7 @@ class RhuPortalTest extends TestCase
                 'patients' => [[
                     'id' => $patient->id,
                     'tested_gene_xpert' => '1',
-                    'tested_dssm' => '1',
+                    'tested_dssm' => '',
                 ]],
             ])
             ->assertSessionHasNoErrors();
@@ -400,6 +396,36 @@ class RhuPortalTest extends TestCase
 
         // Treatment Status is never written from a form, by either portal.
         $this->assertArrayNotHasKey('enrolled_tb_treatment', $responses);
+    }
+
+    public function test_a_patient_records_only_one_of_gxpert_or_dssm(): void
+    {
+        $patient = $this->patient($this->program(), 'Torralba, Banga, Aklan');
+        $rhu = $this->rhu();
+
+        $this->actingAs($rhu)
+            ->patch(route('rhu.tracker.diagnostic.update'), [
+                'patients' => [[
+                    'id' => $patient->id,
+                    'tested_gene_xpert' => '1',
+                    'tested_dssm' => '1',
+                ]],
+            ])
+            ->assertSessionHasErrors('patients.0.tested_dssm');
+
+        $this->assertNull($patient->fresh()->responses['tested_dssm'] ?? null);
+
+        $this->actingAs($rhu)
+            ->patch(route('rhu.tracker.diagnostic.update'), [
+                'patients' => [[
+                    'id' => $patient->id,
+                    'tested_gene_xpert' => '',
+                    'tested_dssm' => '1',
+                ]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('1', $patient->fresh()->responses['tested_dssm']);
     }
 
     /**

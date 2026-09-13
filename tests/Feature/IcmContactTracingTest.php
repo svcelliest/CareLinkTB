@@ -94,9 +94,9 @@ class IcmContactTracingTest extends TestCase
                 ->where('stats.under_treatment', 1)
                 ->where('stats.pending', 1)
                 ->where('stats.traced', 0)
-                ->count('cases.data', 1)
-                ->where('cases.data.0.case_number', $case->case_number)
-                ->where('cases.data.0.has_tracing', false));
+                ->count('cases', 1)
+                ->where('cases.0.case_number', $case->case_number)
+                ->where('cases.0.has_tracing', false));
     }
 
     /**
@@ -120,7 +120,7 @@ class IcmContactTracingTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('stats.under_treatment', 0)
-                ->count('cases.data', 0));
+                ->count('cases', 0));
     }
 
     /**
@@ -138,19 +138,16 @@ class IcmContactTracingTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('stats.under_treatment', 2)
-                ->count('cases.data', 2)
-                ->count('municipalities', 2));
-
-        // And can narrow to one.
-        $this->actingAs($this->coordinator())
-            ->get(route('icm.contact-tracing.index', ['municipality' => 'Kalibo']))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->count('cases.data', 1)
-                ->where('cases.data.0.municipality', 'Kalibo'));
+                ->count('cases', 2)
+                ->where('cases.0.municipality', 'Banga')
+                ->where('cases.1.municipality', 'Kalibo'));
     }
 
-    public function test_the_list_can_be_filtered_by_whether_tracing_was_filed(): void
+    /**
+     * The register shows the filed answers as columns, with the form's exact
+     * wording, and counts the filed forms as its progress.
+     */
+    public function test_the_register_shows_the_filed_answers_and_the_progress(): void
     {
         $rhu = $this->rhu();
         $traced = $this->enroll($rhu, $this->diagnosedPatient());
@@ -160,21 +157,24 @@ class IcmContactTracingTest extends TestCase
             ->put(route('rhu.treatment.contact-tracing.save', $traced), [
                 'enumerator' => 'Nurse Maria',
                 'household_total' => 4,
+                'visit_type' => 'Home Visit',
             ])
             ->assertSessionHasNoErrors();
 
         $this->actingAs($this->coordinator())
-            ->get(route('icm.contact-tracing.index', ['tracing' => 'filed']))
+            ->get(route('icm.contact-tracing.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->count('cases.data', 1)
-                ->where('cases.data.0.case_number', $traced->case_number)
-                ->where('cases.data.0.has_tracing', true));
-
-        $this->actingAs($this->coordinator())
-            ->get(route('icm.contact-tracing.index', ['tracing' => 'pending']))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page->count('cases.data', 1));
+                ->where('stats.under_treatment', 2)
+                ->where('stats.traced', 1)
+                ->count('cases', 2)
+                ->where('cases.0.has_tracing', true)
+                ->where('cases.0.tracing.enumerator', 'Nurse Maria')
+                ->where('cases.0.tracing.household_total', '4')
+                ->where('cases.0.tracing.visit_type', 'Home Visit')
+                ->where('cases.1.has_tracing', false)
+                ->where('cases.1.tracing.enumerator', '')
+                ->where('options.visit_types', ['Call', 'Home Visit']));
     }
 
     public function test_the_patient_view_shows_the_summary_and_the_filed_report(): void

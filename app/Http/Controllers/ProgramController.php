@@ -386,6 +386,7 @@ class ProgramController extends Controller
             'tb_case_classification' => (string) ($responses['tb_case_classification'] ?? ''),
             'treatment_status' => $patient->treatmentStatus(),
             'remarks' => (string) ($responses['remarks'] ?? ''),
+            'diagnostic_remarks' => (string) ($responses['diagnostic_remarks'] ?? ''),
         ];
     }
 

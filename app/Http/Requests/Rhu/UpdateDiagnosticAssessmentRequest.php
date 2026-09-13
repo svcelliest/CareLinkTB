@@ -38,7 +38,18 @@ class UpdateDiagnosticAssessmentRequest extends FormRequest
             'patients.*.sputum_collected' => ['nullable', Rule::in(['', '0', '1'])],
             'patients.*.not_collected_reason' => ['nullable', 'string', 'max:255'],
             'patients.*.tested_gene_xpert' => ['nullable', Rule::in(['', '0', '1'])],
-            'patients.*.tested_dssm' => ['nullable', Rule::in(['', '0', '1'])],
+            // One recorded test per patient — never GXpert and DSSM together.
+            'patients.*.tested_dssm' => [
+                'nullable',
+                Rule::in(['', '0', '1']),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $sibling = str_replace('.tested_dssm', '.tested_gene_xpert', $attribute);
+
+                    if ($value === '1' && $this->input($sibling) === '1') {
+                        $fail('Only one of GXpert or DSSM may be recorded for a patient.');
+                    }
+                },
+            ],
             'patients.*.diagnostic_result' => ['nullable', Rule::in(['', 'positive', 'negative'])],
             'patients.*.positive_classification' => [
                 'nullable',

@@ -116,15 +116,14 @@ class RhuPatientTrackerController extends Controller
                 'program' => $programId,
                 'tab' => $filters['tab'] ?? 'sputum',
             ],
-            // Sputum collection is counted per patient — a specimen is either
-            // taken or not. Diagnostic assessment is counted per *test*, since
-            // each patient needs both GXpert and DSSM: a patient with one of
-            // the two is half done, which a per-patient count cannot express.
+            // Both steps are counted per patient: a specimen is either taken
+            // or not, and a patient is tested with one of GXpert or DSSM —
+            // never both — so a recorded test on either column completes them.
             'progress' => [
                 'total' => $all->count(),
                 'collected' => $all->filter(fn (Patient $p) => $p->sputumCollected())->count(),
                 'tests_completed' => $all->sum(fn (Patient $p) => $p->diagnosticTestsCompleted()),
-                'tests_total' => $all->count() * count(Patient::DIAGNOSTIC_TESTS),
+                'tests_total' => $all->count(),
             ],
             'municipality' => RhuScope::municipality($user),
         ]);

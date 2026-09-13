@@ -10,7 +10,7 @@ import {
     FaUsersGear,
 } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Card, cx } from "@/Components/ui";
+import { Card, KpiCard, cx } from "@/Components/ui";
 import MunicipalityMap, { makeScale } from "@/Components/analytics/MunicipalityMap";
 import {
     BarChart,
@@ -66,30 +66,6 @@ function ProgramStat({ icon, label, value, accent, href }) {
                     {value}
                 </span>
             </span>
-        </Card>
-    );
-}
-
-function Kpi({ label, value, sub, icon, accent }) {
-    return (
-        <Card
-            className="flex flex-col gap-2 border-l-4 px-5 py-4"
-            style={{ borderLeftColor: accent.fg }}
-        >
-            <div className="flex items-start justify-between gap-3">
-                <span className="text-[11px] leading-tight font-bold tracking-wide text-muted uppercase">
-                    {label}
-                </span>
-                <span
-                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-base"
-                    style={{ background: accent.bg, color: accent.fg }}
-                    aria-hidden="true"
-                >
-                    {icon}
-                </span>
-            </div>
-            <span className="text-[30px] leading-none font-bold text-ink">{value}</span>
-            <span className="text-[11.5px] text-muted">{sub}</span>
         </Card>
     );
 }
@@ -251,28 +227,28 @@ export default function Dashboard({ filters, options, analytics }) {
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <Kpi
+                        <KpiCard
                             label="Total Registered Patients"
                             value={analytics.kpis.total}
                             sub={`All registered patients${scopeSuffix}`}
                             icon={<FaUsers />}
                             accent={{ bg: "#eef2ff", fg: "#4a7cf7" }}
                         />
-                        <Kpi
+                        <KpiCard
                             label="Presumptive Patients"
                             value={analytics.kpis.presumptive}
                             sub="Awaiting diagnostic confirmation"
                             icon={<FaCircleExclamation />}
                             accent={{ bg: "#fff6e6", fg: "#e2941b" }}
                         />
-                        <Kpi
+                        <KpiCard
                             label="Active Cases"
                             value={analytics.kpis.active_cases}
                             sub="Confirmed cases under management"
                             icon={<FaBolt />}
                             accent={{ bg: "#fdecec", fg: "#c0392b" }}
                         />
-                        <Kpi
+                        <KpiCard
                             label="Treatment Enrolment Rate"
                             value={`${analytics.kpis.enrolment_rate}%`}
                             sub={`${analytics.kpis.enrolled} of ${analytics.kpis.active_cases} confirmed cases enrolled`}

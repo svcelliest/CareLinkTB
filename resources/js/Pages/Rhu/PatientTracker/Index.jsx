@@ -6,13 +6,19 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Card, TreatmentStatus, cx } from "@/Components/ui";
 import {
-    CountBadge,
+    Card,
+    TreatmentStatus,
+    actionButtonClass,
+    cx,
+    secondaryActionButtonClass as secondaryButtonClass,
+} from "@/Components/ui";
+import {
     ProgressBar,
     ProgressPill,
     RegisterCheckbox,
     TabStrip,
+    TableToolbar,
     registerInputClass,
     registerSelectClass,
     tableCellClass,
@@ -145,6 +151,22 @@ export default function Index({ patients, filters, progress, municipality }) {
         setField(id, "positive_classification", code);
     };
 
+    /**
+     * GXpert and DSSM are one recorded test, never both: ticking one is
+     * refused while the other is on record, so the draft can never hold a
+     * pair even if the disabled box were somehow toggled.
+     */
+    const setTest = (id, field, checked) => {
+        const other = field === "tested_gene_xpert" ? "tested_dssm" : "tested_gene_xpert";
+
+        setDraft((current) => {
+            const row = current[id] ?? {};
+            if (checked && row[other] === "1") return current;
+
+            return { ...current, [id]: { ...row, [field]: checked ? "1" : "" } };
+        });
+    };
+
     const save = () => {
         setSaving(true);
         router.patch(
@@ -264,14 +286,13 @@ export default function Index({ patients, filters, progress, municipality }) {
                                 total={progress.total}
                                 unit="patients"
                             />
-                            {/* Diagnostic assessment is measured in tests, not
-                                patients: each patient needs both GXpert and
-                                DSSM, so one of the two reads as half done. */}
+                            {/* One test per patient — GXpert or DSSM — so a
+                                patient is done once either is recorded. */}
                             <ProgressStep
                                 name="Diagnostic Assessment"
                                 done={progress.tests_completed}
                                 total={progress.tests_total}
-                                unit="tests"
+                                unit="patients"
                             />
                         </div>
                         <ProgressBar
@@ -385,6 +406,7 @@ export default function Index({ patients, filters, progress, municipality }) {
                             draft={draft}
                             editing={editing}
                             setField={setField}
+                            setTest={setTest}
                             setResult={setResult}
                         />
                     )}
@@ -405,32 +427,6 @@ function ProgressStep({ name, done, total, unit }) {
                     {unit ? ` ${unit}` : ""}
                 </span>
             </span>
-        </div>
-    );
-}
-
-// The same skin as Patient Monitoring's Enroll Patient button, so the
-// actions on the two screens match.
-const actionButtonClass =
-    "inline-flex items-center gap-[7px] rounded-md border border-brand bg-brand px-3.5 py-[9px] text-[10.5px] font-bold whitespace-nowrap text-white shadow-[0_2px_5px_rgba(192,57,43,0.16)] hover:border-brand-strong hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50";
-const secondaryButtonClass =
-    "inline-flex items-center gap-[7px] rounded-md border border-line bg-white px-3.5 py-[9px] text-[10.5px] font-bold whitespace-nowrap text-[#555] hover:border-brand hover:text-brand disabled:opacity-60";
-
-/**
- * The strip above the table: the counts on the left, and on the right the
- * controls that act on that table — search, export, and the edit flow.
- *
- * `barTotal` lets the bar count something other than patients — the diagnostic
- * tab measures tests, while the badge beside it still counts patients.
- */
-function TableToolbar({ total, label, done, barTotal, children }) {
-    return (
-        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line-soft px-5 py-3">
-            <div className="flex flex-wrap items-center gap-3.5">
-                <CountBadge>Total # of Patient: {total}</CountBadge>
-                <ProgressBar label={label} done={done} total={barTotal ?? total} />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">{children}</div>
         </div>
     );
 }
@@ -569,7 +565,7 @@ function SputumTable({ patients, draft, editing, setField }) {
     );
 }
 
-function DiagnosticTable({ patients, draft, editing, setField, setResult }) {
+function DiagnosticTable({ patients, draft, editing, setField, setTest, setResult }) {
     return (
         <div className="overflow-x-auto">
             <table className="w-full border-collapse text-xs whitespace-nowrap">
@@ -635,17 +631,15 @@ function DiagnosticTable({ patients, draft, editing, setField, setResult }) {
                                     <td className={cx(tableCellClass, "text-left font-medium text-ink")}>
                                         {patient.name}
                                     </td>
+                                    {/* One test per patient: whichever is on
+                                        record locks the other until cleared. */}
                                     <td className={tableCellClass}>
                                         <RegisterCheckbox
                                             label={`Tested with GXpert: ${patient.name}`}
                                             checked={row.tested_gene_xpert === "1"}
-                                            disabled={!editing}
+                                            disabled={!editing || row.tested_dssm === "1"}
                                             onChange={(checked) =>
-                                                setField(
-                                                    patient.id,
-                                                    "tested_gene_xpert",
-                                                    checked ? "1" : "",
-                                                )
+                                                setTest(patient.id, "tested_gene_xpert", checked)
                                             }
                                         />
                                     </td>
@@ -653,9 +647,9 @@ function DiagnosticTable({ patients, draft, editing, setField, setResult }) {
                                         <RegisterCheckbox
                                             label={`Tested with DSSM: ${patient.name}`}
                                             checked={row.tested_dssm === "1"}
-                                            disabled={!editing}
+                                            disabled={!editing || row.tested_gene_xpert === "1"}
                                             onChange={(checked) =>
-                                                setField(patient.id, "tested_dssm", checked ? "1" : "")
+                                                setTest(patient.id, "tested_dssm", checked)
                                             }
                                         />
                                     </td>

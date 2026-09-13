@@ -67,7 +67,8 @@ class RhuController extends Controller
                         ->count(),
                     'tests_completed' => $patients
                         ->sum(fn (Patient $patient) => $patient->diagnosticTestsCompleted()),
-                    'tests_total' => $total * count(Patient::DIAGNOSTIC_TESTS),
+                    // One test (GXpert or DSSM) per patient.
+                    'tests_total' => $total,
                 ];
             }),
 

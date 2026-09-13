@@ -14,6 +14,7 @@ import {
     Card,
     EmptyState,
     Field,
+    KpiCard,
     Modal,
     PageToolbar,
     SearchInput,
@@ -145,11 +146,13 @@ export default function Index({ accounts, filters, stats, municipalities }) {
     };
 
     const setRole = (role) => {
-        // Municipality means different things per role — the catchment an RHU
-        // covers, versus the place a provider's profile starts from — but the
-        // selection itself carries over, so switching role does not throw away
-        // a choice that is still valid.
-        createForm.setData((current) => ({ ...current, role }));
+        // Only an RHU account carries a municipality; the field is hidden for
+        // a provider, so a choice made before switching is not posted blind.
+        createForm.setData((current) => ({
+            ...current,
+            role,
+            municipality: role === "rhu" ? current.municipality : "",
+        }));
     };
 
     const copyPassword = async () => {
@@ -189,9 +192,30 @@ export default function Index({ accounts, filters, stats, municipalities }) {
     };
 
     const summary = [
-        { key: "total", label: "Total accounts", value: stats.total, icon: <FaUsers />, tone: "bg-[#fbeceb] text-[#b5382e]" },
-        { key: "active", label: "Active", value: stats.active, icon: <FaCircleCheck />, tone: "bg-[#e9f7ef] text-[#279154]" },
-        { key: "disabled", label: "Disabled", value: stats.disabled, icon: <FaBan />, tone: "bg-[#f2eeee] text-[#777]" },
+        {
+            key: "total",
+            label: "Total Accounts",
+            value: stats.total,
+            sub: "RHU and provider accounts",
+            icon: <FaUsers />,
+            accent: { bg: "#fdecec", fg: "#c0392b" },
+        },
+        {
+            key: "active",
+            label: "Active",
+            value: stats.active,
+            sub: "Able to sign in",
+            icon: <FaCircleCheck />,
+            accent: { bg: "#edfaf3", fg: "#27ae60" },
+        },
+        {
+            key: "disabled",
+            label: "Disabled",
+            value: stats.disabled,
+            sub: "Sign-in switched off",
+            icon: <FaBan />,
+            accent: { bg: "#f2eeee", fg: "#777777" },
+        },
     ];
 
     return (
@@ -216,28 +240,14 @@ export default function Index({ accounts, filters, stats, municipalities }) {
                     aria-label="Account summary"
                 >
                     {summary.map((card) => (
-                        <Card
+                        <KpiCard
                             key={card.key}
-                            className="flex min-h-[74px] items-center gap-3 rounded-xl border border-[#eadfdf] px-[18px] py-[14px] shadow-[0_2px_9px_rgba(66,38,38,0.045)]"
-                        >
-                            <span
-                                className={cx(
-                                    "flex size-[38px] shrink-0 items-center justify-center rounded-[9px] text-[18px]",
-                                    card.tone,
-                                )}
-                                aria-hidden="true"
-                            >
-                                {card.icon}
-                            </span>
-                            <div className="flex min-w-0 flex-col gap-0.5">
-                                <strong className="text-[18px] leading-none font-extrabold text-[#202020]">
-                                    {card.value}
-                                </strong>
-                                <span className="text-[10.5px] font-medium whitespace-nowrap text-[#8b8b8b]">
-                                    {card.label}
-                                </span>
-                            </div>
-                        </Card>
+                            label={card.label}
+                            value={card.value}
+                            sub={card.sub}
+                            icon={card.icon}
+                            accent={card.accent}
+                        />
                     ))}
                 </div>
 
@@ -312,7 +322,12 @@ export default function Index({ accounts, filters, stats, municipalities }) {
                                         ].map((heading) => (
                                             <th
                                                 key={heading}
-                                                className="border-b border-line-soft px-5 py-3 text-left text-[11px] font-bold tracking-wide text-[#bbb] uppercase"
+                                                className={cx(
+                                                    "border-b border-line-soft px-5 py-3 text-[11px] font-bold tracking-wide text-[#bbb] uppercase",
+                                                    heading === "Role" || heading === "Status"
+                                                        ? "text-center"
+                                                        : "text-left",
+                                                )}
                                             >
                                                 {heading}
                                             </th>
@@ -348,7 +363,7 @@ export default function Index({ accounts, filters, stats, municipalities }) {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="border-b border-[#f8f2f2] px-5 py-3.5">
+                                            <td className="border-b border-[#f8f2f2] px-5 py-3.5 text-center">
                                                 <span
                                                     className={cx(
                                                         "inline-block rounded-full px-3 py-[3px] text-[11px] font-bold",
@@ -369,7 +384,7 @@ export default function Index({ accounts, filters, stats, municipalities }) {
                                             <td className="border-b border-[#f8f2f2] px-5 py-3.5 text-[12.5px] text-muted">
                                                 {account.last_login_label}
                                             </td>
-                                            <td className="border-b border-[#f8f2f2] px-5 py-3.5">
+                                            <td className="border-b border-[#f8f2f2] px-5 py-3.5 text-center">
                                                 <StatusPill
                                                     tone={
                                                         account.is_active
@@ -533,38 +548,35 @@ export default function Index({ accounts, filters, stats, municipalities }) {
 
                     {/* Municipality scopes an RHU account — it is what the
                         account may see, so it is required. A provider is not
-                        scoped by it; it is recorded so the provider's profile
-                        opens with its address already filled in, and stays
-                        optional. */}
-                    <Field
-                        label={isRhu ? "Municipality" : "Municipality (optional)"}
-                        htmlFor="account-municipality"
-                        error={createForm.errors.municipality}
-                        hint={
-                            isRhu
-                                ? "The municipality this RHU account covers."
-                                : "Used as the starting address on this provider's profile."
-                        }
-                    >
-                        <select
-                            id="account-municipality"
-                            className={controlClass}
-                            value={createForm.data.municipality}
-                            onChange={(event) =>
-                                createForm.setData(
-                                    "municipality",
-                                    event.target.value,
-                                )
-                            }
+                        scoped by it and sets their own address from their
+                        profile, so the field is not asked for. */}
+                    {isRhu && (
+                        <Field
+                            label="Municipality"
+                            htmlFor="account-municipality"
+                            error={createForm.errors.municipality}
+                            hint="The municipality this RHU account covers."
                         >
-                            <option value="">— Select Municipality —</option>
-                            {municipalities.map((name) => (
-                                <option key={name} value={name}>
-                                    {name}
-                                </option>
-                            ))}
-                        </select>
-                    </Field>
+                            <select
+                                id="account-municipality"
+                                className={controlClass}
+                                value={createForm.data.municipality}
+                                onChange={(event) =>
+                                    createForm.setData(
+                                        "municipality",
+                                        event.target.value,
+                                    )
+                                }
+                            >
+                                <option value="">— Select Municipality —</option>
+                                {municipalities.map((name) => (
+                                    <option key={name} value={name}>
+                                        {name}
+                                    </option>
+                                ))}
+                            </select>
+                        </Field>
+                    )}
 
                     <Field
                         label="Email"

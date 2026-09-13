@@ -124,27 +124,30 @@ class Patient extends Model
     }
 
     /**
-     * How many of the required diagnostic tests this patient has had: 0, 1 or
-     * 2. Read straight off the GXpert (3a) and DSSM (3b) columns the RHU
-     * records, so it can never drift from what the register shows.
+     * Whether this patient has had their diagnostic test: 1 once either
+     * GXpert (3a) or DSSM (3b) is recorded, else 0. A patient is tested with
+     * one or the other, never both, so the two columns count as one test.
+     * Read straight off the register columns the RHU records, so it can never
+     * drift from what the register shows.
      */
     public function diagnosticTestsCompleted(): int
     {
-        return count(array_filter(
-            self::DIAGNOSTIC_TESTS,
-            fn (string $key): bool => $this->response($key) === '1',
-        ));
+        foreach (self::DIAGNOSTIC_TESTS as $key) {
+            if ($this->response($key) === '1') {
+                return 1;
+            }
+        }
+
+        return 0;
     }
 
     /**
-     * This patient's diagnostic assessment progress: 0%, 50% or 100% for
-     * neither, one, or both tests completed.
+     * This patient's diagnostic assessment progress: 0% until the one
+     * required test is recorded, then 100%.
      */
     public function diagnosticProgressPercent(): int
     {
-        return (int) round(
-            $this->diagnosticTestsCompleted() / count(self::DIAGNOSTIC_TESTS) * 100,
-        );
+        return $this->diagnosticTestsCompleted() * 100;
     }
 
     /**

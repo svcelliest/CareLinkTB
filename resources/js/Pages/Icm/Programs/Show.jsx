@@ -1,15 +1,23 @@
-import { Link, router, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { Link, usePage } from "@inertiajs/react";
+import { useMemo, useState } from "react";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import {
     FaChevronLeft,
     FaCircleCheck,
-    FaDownload,
+    FaCircleExclamation,
     FaLock,
-    FaPen,
+    FaUserCheck,
+    FaUsers,
 } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import ProgramFormDialog from "@/Components/program/ProgramFormDialog";
-import { Button, Card, StatusPill, TreatmentStatus, cx } from "@/Components/ui";
+import {
+    Card,
+    KpiCard,
+    StatusPill,
+    TreatmentStatus,
+    actionButtonClass,
+    cx,
+} from "@/Components/ui";
 
 /**
  * The program module. Program Record, Sputum Collection and Diagnostic
@@ -31,64 +39,56 @@ const tabs = [
     { value: "diagnostic", label: "Diagnostic Assessment" },
 ];
 
-const sputumReasons = [
-    "",
-    "No RHU Staff or BHW",
-    "Patient Refused",
-    "Patient Absent",
-    "No Supplies",
-    "Other",
-];
-
 /** Final Classification → TB Diagnosis. Values are what the RHU forms store. */
 const tbDiagnoses = [
-    { value: "", label: "—" },
     { value: "bc_ds_tb", label: "DSTB BC" },
     { value: "cd_ds_tb", label: "DSTB CD" },
     { value: "rr_tb", label: "RRTB BC" },
     { value: "none", label: "No TB" },
 ];
 
+/** The five positive sub-classifications, as the RHU's register labels them. */
+const positiveCodes = [
+    { code: "dssm", label: "DSSM (4)" },
+    { code: "rr", label: "RR (5)" },
+    { code: "t", label: "T (6)" },
+    { code: "tt", label: "TT (7)" },
+    { code: "ti", label: "TI (8)" },
+];
+
+// Every table on this screen scrolls inside its card, and its whole <thead>
+// is sticky against that scroller. Headings and recorded values read black;
+// nothing here is editable, and a greyed-out value is harder to read, not
+// more honest.
 const cellClass =
-    "border-r border-b border-[#f5f0f0] px-3 py-[9px] text-center align-middle text-[#444]";
+    "border-r border-b border-[#f5f0f0] px-3 py-[9px] text-center align-middle text-ink";
 const headClass =
-    "border-r border-b-2 border-line-soft bg-[#faf7f7] px-3 py-2.5 text-center align-bottom text-[11px] leading-tight font-bold text-[#555]";
+    "border-r border-b-2 border-line-soft bg-[#faf7f7] px-3 py-2.5 text-center align-bottom text-[11px] leading-tight font-bold text-ink";
 const groupHeadClass =
     "border-r border-b-2 border-line-soft bg-line-soft px-3 py-2.5 text-center align-bottom text-[11px] font-bold tracking-wide text-brand uppercase";
-const subHeadClass =
-    "border-r border-b-2 border-line-soft bg-[#faf7f7] px-3 py-2.5 text-center align-bottom text-[10px] font-bold text-[#666]";
-const selectClass =
-    "min-w-[110px] rounded border border-line bg-white px-2 py-1 text-[11px] text-[#555] outline-none focus:border-brand disabled:cursor-not-allowed disabled:bg-[#f8f8f8] disabled:opacity-70";
-const remarksClass =
-    "min-h-[58px] w-full min-w-[190px] resize-y rounded-md border border-[#ddd] bg-white px-2.5 py-2 text-[11px] leading-snug outline-none focus:border-brand disabled:bg-[#f7f7f7] disabled:text-[#666] disabled:opacity-100";
+// Alignment is added per column: `text-left` and `text-center` together would
+// let whichever the stylesheet lists last win, not the one the column wants.
+const registerHeadClass =
+    "border-b border-line-soft bg-white px-[18px] py-2.5 text-[11px] font-bold tracking-wide text-ink";
 
-function Checkbox({ checked, disabled, onChange, label }) {
-    return (
-        <input
-            type="checkbox"
-            aria-label={label}
-            className="size-[15px] accent-brand disabled:opacity-70"
-            checked={checked}
-            disabled={disabled}
-            onChange={(event) => onChange?.(event.target.checked)}
-        />
-    );
-}
+/** Rows in surname-first alphabetical order, as the register lists them. */
+const byName = (a, b) =>
+    String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, {
+        sensitivity: "base",
+    });
 
-export default function Show({ program, scheduleWindow }) {
+export default function Show({ program }) {
     const { flash } = usePage().props;
     const [tab, setTab] = useState("record");
-    // The header's Edit button opens the same create/edit dialog the program
-    // list uses. The register tabs below are view-only for the coordinator:
-    // sputum collection and the diagnostic assessment are recorded by the RHU
-    // in its Patient Tracker, and this screen monitors them.
-    const [editOpen, setEditOpen] = useState(false);
-    const editing = false;
+    // Every tab is view-only for the coordinator: program details are edited
+    // from the program list, and sputum collection and the diagnostic
+    // assessment are recorded by the RHU in its Patient Tracker. This screen
+    // monitors them.
 
     const statusLabel = statusLabels[program.status] ?? program.status;
     const isFormTab = tab === "sputum" || tab === "diagnostic";
 
-    const rows = program.patients;
+    const rows = useMemo(() => [...program.patients].sort(byName), [program.patients]);
 
     const collectedCount = rows.filter(
         (row) => row.sputum_collected === "1",
@@ -96,10 +96,6 @@ export default function Show({ program, scheduleWindow }) {
     const collectedPct = rows.length
         ? Math.round((collectedCount / rows.length) * 100)
         : 0;
-
-    // Nothing on this screen writes a row, so a field change is a no-op; the
-    // tables keep the same props they had so their markup is unchanged.
-    const setField = () => {};
 
     const switchTab = setTab;
 
@@ -122,27 +118,6 @@ export default function Show({ program, scheduleWindow }) {
                             />
                             <span>{program.name}</span>
                         </Link>
-
-                        <div className="flex items-center gap-2.5">
-                            <Button
-                                variant="secondary"
-                                onClick={() => setEditOpen(true)}
-                            >
-                                <FaPen className="size-3.5" aria-hidden="true" />
-                                Edit
-                            </Button>
-                            <Button
-                                as="a"
-                                variant="secondary"
-                                href={route("icm.programs.export")}
-                            >
-                                <FaDownload
-                                    className="size-[15px]"
-                                    aria-hidden="true"
-                                />
-                                Export
-                            </Button>
-                        </div>
                     </div>
 
                     <div className="mb-2.5 flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -212,14 +187,16 @@ export default function Show({ program, scheduleWindow }) {
                     </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6">
+                {/* The tab body: each table wrap is the scroller so the
+                    sticky headers stick to it, not to the page. */}
+                <div className="flex min-h-0 flex-1 flex-col px-6 pt-4 pb-6">
                     {tab === "record" && (
                         <ProgramRecord program={program} rows={rows} />
                     )}
 
                     {isFormTab && (
-                        <Card className="overflow-hidden">
-                            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line-soft px-5 py-3.5">
+                        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-line-soft px-5 py-3.5">
                                 <div className="flex flex-wrap items-center gap-3.5">
                                     <span className="text-sm font-bold text-ink">
                                         {tab === "sputum"
@@ -249,84 +226,78 @@ export default function Show({ program, scheduleWindow }) {
                                     )}
                                 </div>
 
+                                <ExportButton />
                             </div>
 
-                            <div className="overflow-x-auto">
+                            <div className="min-h-0 flex-1 overflow-auto">
                                 {tab === "sputum" ? (
-                                    <SputumTable
-                                        rows={rows}
-                                        editing={editing}
-                                        setField={setField}
-                                    />
+                                    <SputumTable rows={rows} />
                                 ) : (
-                                    <DiagnosticTable
-                                        rows={rows}
-                                        editing={editing}
-                                        setField={setField}
-                                    />
+                                    <DiagnosticTable rows={rows} />
                                 )}
                             </div>
                         </Card>
                     )}
                 </div>
             </section>
-
-            <ProgramFormDialog
-                open={editOpen}
-                onClose={() => setEditOpen(false)}
-                program={program}
-                scheduleWindow={scheduleWindow}
-            />
         </DashboardLayout>
+    );
+}
+
+/** The program's export, in the same skin as the RHU portal's Export File. */
+function ExportButton() {
+    return (
+        <a href={route("icm.programs.export")} className={actionButtonClass}>
+            <FileDownloadOutlinedIcon sx={{ fontSize: 15 }} aria-hidden="true" />
+            Export File
+        </a>
     );
 }
 
 function ProgramRecord({ program, rows }) {
     return (
         <>
-            <div className="mb-[18px] grid gap-3.5 sm:grid-cols-3">
-                {[
-                    { label: "Total Patients", value: program.patient_counts.total },
-                    { label: "Normal", value: program.patient_counts.normal },
-                    {
-                        label: "Presumptive TB",
-                        value: program.patient_counts.presumptive,
-                        red: true,
-                    },
-                ].map((stat) => (
-                    <Card
-                        key={stat.label}
-                        className="rounded-[10px] px-[18px] py-4 text-center"
-                    >
-                        <div className="mb-1 text-[11px] font-semibold tracking-wide text-muted uppercase">
-                            {stat.label}
-                        </div>
-                        <div
-                            className={cx(
-                                "text-[26px] font-bold",
-                                stat.red ? "text-brand" : "text-ink",
-                            )}
-                        >
-                            {stat.value}
-                        </div>
-                    </Card>
-                ))}
+            <div className="mb-[18px] grid shrink-0 gap-3.5 sm:grid-cols-3">
+                <KpiCard
+                    label="Total Patients"
+                    value={program.patient_counts.total}
+                    sub="Registered in this program"
+                    icon={<FaUsers />}
+                    accent={{ bg: "#eef2ff", fg: "#4a7cf7" }}
+                />
+                <KpiCard
+                    label="Normal"
+                    value={program.patient_counts.normal}
+                    sub="No TB symptoms found"
+                    icon={<FaUserCheck />}
+                    accent={{ bg: "#edfaf3", fg: "#27ae60" }}
+                />
+                <KpiCard
+                    label="Presumptive TB"
+                    value={program.patient_counts.presumptive}
+                    sub="Referred for diagnostic testing"
+                    icon={<FaCircleExclamation />}
+                    accent={{ bg: "#fff6e6", fg: "#e2941b" }}
+                />
             </div>
 
-            <Card className="overflow-hidden">
-                <div className="flex items-center justify-between border-b border-line-soft px-5 py-3.5">
-                    <span className="text-sm font-bold text-ink">
-                        Registered Patients
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[#f0f0f0] px-2.5 py-1 text-[11px] font-semibold text-muted">
-                        <FaLock className="size-3" aria-hidden="true" />
-                        View Only
-                    </span>
+            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-line-soft px-5 py-3.5">
+                    <div className="flex items-center gap-3.5">
+                        <span className="text-sm font-bold text-ink">
+                            Registered Patients
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-[#f0f0f0] px-2.5 py-1 text-[11px] font-semibold text-muted">
+                            <FaLock className="size-3" aria-hidden="true" />
+                            View Only
+                        </span>
+                    </div>
+                    <ExportButton />
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="min-h-0 flex-1 overflow-auto">
                     <table className="w-full border-collapse">
-                        <thead>
+                        <thead className="sticky top-0 z-[2]">
                             <tr>
                                 {[
                                     "#",
@@ -338,7 +309,10 @@ function ProgramRecord({ program, rows }) {
                                 ].map((heading) => (
                                     <th
                                         key={heading}
-                                        className="border-b border-line-soft px-[18px] py-2.5 text-left text-[11px] font-bold tracking-wide text-[#bbb]"
+                                        className={cx(
+                                            registerHeadClass,
+                                            heading === "Status" ? "text-center" : "text-left",
+                                        )}
                                     >
                                         {heading}
                                     </th>
@@ -367,7 +341,7 @@ function ProgramRecord({ program, rows }) {
                                         <td className="border-b border-[#f8f2f2] px-[18px] py-3 text-[13px] text-[#444]">
                                             {patient.contact ?? "—"}
                                         </td>
-                                        <td className="border-b border-[#f8f2f2] px-[18px] py-3">
+                                        <td className="border-b border-[#f8f2f2] px-[18px] py-3 text-center">
                                             <StatusPill
                                                 tone={
                                                     patient.status === "Presumptive"
@@ -398,155 +372,49 @@ function ProgramRecord({ program, rows }) {
     );
 }
 
-function SputumTable({ rows, editing, setField }) {
-    return (
-        <table className="w-full border-collapse text-xs whitespace-nowrap">
-            <thead>
-                <tr>
-                    <th className={cx(headClass, "min-w-[60px]")}>No.</th>
-                    <th className={cx(headClass, "min-w-[120px]")}>Patient Name</th>
-                    <th className={cx(headClass, "min-w-[120px]")}>
-                        Sputum Collected
-                    </th>
-                    <th className={cx(headClass, "min-w-[180px]")}>
-                        Initial Reason if not Collected
-                    </th>
-                    <th className={cx(headClass, "min-w-[220px]")}>Remarks</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows.length > 0 ? (
-                    rows.map((row) => (
-                        <tr
-                            key={row.id}
-                            className={cx(
-                                "hover:bg-[#fdf8f8]",
-                                row.sputum_collected === "1" && "bg-[#fff5f5]",
-                            )}
-                        >
-                            <td className={cellClass}>{row.number}</td>
-                            <td
-                                className={cx(
-                                    cellClass,
-                                    "text-left font-medium text-ink",
-                                )}
-                            >
-                                {row.name}
-                            </td>
-                            <td className={cellClass}>
-                                <Checkbox
-                                    label={`Sputum collected for ${row.name}`}
-                                    checked={row.sputum_collected === "1"}
-                                    disabled={!editing}
-                                    onChange={(checked) =>
-                                        setField(
-                                            row.id,
-                                            "sputum_collected",
-                                            checked ? "1" : "0",
-                                        )
-                                    }
-                                />
-                            </td>
-                            <td className={cellClass}>
-                                <select
-                                    aria-label={`Reason not collected for ${row.name}`}
-                                    className={selectClass}
-                                    disabled={!editing}
-                                    value={row.not_collected_reason}
-                                    onChange={(event) =>
-                                        setField(
-                                            row.id,
-                                            "not_collected_reason",
-                                            event.target.value,
-                                        )
-                                    }
-                                >
-                                    {sputumReasons.map((reason) => (
-                                        <option key={reason || "none"} value={reason}>
-                                            {reason || "—"}
-                                        </option>
-                                    ))}
-                                </select>
-                            </td>
-                            <td className={cellClass}>
-                                <RemarksCell
-                                    row={row}
-                                    editing={editing}
-                                    setField={setField}
-                                />
-                            </td>
-                        </tr>
-                    ))
-                ) : (
-                    <tr>
-                        <td
-                            colSpan={5}
-                            className="px-6 py-8 text-center text-[#bbb]"
-                        >
-                            No patients in this program yet.
-                        </td>
-                    </tr>
-                )}
-            </tbody>
-        </table>
+
+/** A recorded value, or a quiet dash when the RHU has not filled it yet. */
+function Recorded({ value, className = "" }) {
+    return value ? (
+        <span className={className}>{value}</span>
+    ) : (
+        <span className="text-[#bbb]">—</span>
     );
 }
 
-function DiagnosticTable({ rows, editing, setField }) {
+/**
+ * The GXpert (3a) / DSSM (3b) column for one row. The register stores one
+ * result — Positive with its sub-classification, or Negative — against
+ * whichever test was done, so the tested column carries it and the other
+ * reads as not done. A test ticked without a result yet reads as such.
+ */
+function testResult(row, tested) {
+    if (tested !== "1") return "";
+    if (row.diagnostic_result === "negative") return "Negative";
+    if (row.diagnostic_result === "positive") {
+        const code = positiveCodes.find((entry) => entry.code === row.positive_classification);
+
+        return code ? `Positive — ${code.label}` : "Positive";
+    }
+
+    return "Tested — no result yet";
+}
+
+const diagnosisLabel = (value) =>
+    tbDiagnoses.find((option) => option.value === value && value !== "")?.label ?? "";
+
+function SputumTable({ rows }) {
     return (
-        <table className="w-full border-collapse text-xs whitespace-nowrap">
-            <thead>
+        <table className="w-full border-collapse text-xs">
+            <thead className="sticky top-0 z-[2]">
                 <tr>
-                    <th className={cx(headClass, "min-w-[60px] text-ink")} rowSpan={3}>
-                        No.
+                    <th className={cx(headClass, "min-w-[60px]")}>No.</th>
+                    <th className={cx(headClass, "min-w-[160px] text-left")}>Patient Name</th>
+                    <th className={cx(headClass, "min-w-[120px]")}>Sputum Collected</th>
+                    <th className={cx(headClass, "min-w-[180px]")}>
+                        Initial Reason if not Collected
                     </th>
-                    <th className={cx(headClass, "min-w-[120px] text-ink")} rowSpan={3}>
-                        Patient Name
-                    </th>
-                    <th className={groupHeadClass} colSpan={7}>
-                        Diagnostic Testing
-                    </th>
-                    <th className={cx(headClass, "min-w-[70px] text-ink")} rowSpan={3}>
-                        Negative (9)
-                    </th>
-                    <th
-                        className={cx(groupHeadClass, "text-center")}
-                        colSpan={3}
-                    >
-                        Final Classification
-                    </th>
-                </tr>
-                <tr>
-                    <th className={cx(headClass, "min-w-[70px]")} rowSpan={2}>
-                        Tested w/ GXpert (3a)
-                    </th>
-                    <th className={cx(headClass, "min-w-[70px]")} rowSpan={2}>
-                        Tested w/ DSSM (3b)
-                    </th>
-                    <th className={groupHeadClass} colSpan={5}>
-                        GXpert or DSSM Result – Positive
-                    </th>
-                    <th className={cx(groupHeadClass, "min-w-[145px]")} rowSpan={2}>
-                        TB Diagnosis
-                    </th>
-                    <th className={cx(groupHeadClass, "min-w-[145px]")} rowSpan={2}>
-                        Treatment Status
-                    </th>
-                    <th className={cx(groupHeadClass, "min-w-[220px]")} rowSpan={2}>
-                        Remarks
-                    </th>
-                </tr>
-                <tr>
-                    {["DSSM (4)", "RR (5)", "T (6)", "TT (7)", "TI (8)"].map(
-                        (heading) => (
-                            <th
-                                key={heading}
-                                className={cx(subHeadClass, "min-w-[60px]")}
-                            >
-                                {heading}
-                            </th>
-                        ),
-                    )}
+                    <th className={cx(headClass, "min-w-[220px] text-left")}>Remarks</th>
                 </tr>
             </thead>
             <tbody>
@@ -554,93 +422,27 @@ function DiagnosticTable({ rows, editing, setField }) {
                     rows.map((row) => (
                         <tr key={row.id} className="hover:bg-[#fdf8f8]">
                             <td className={cellClass}>{row.number}</td>
-                            <td
-                                className={cx(
-                                    cellClass,
-                                    "text-left font-medium text-ink",
+                            <td className={cx(cellClass, "text-left font-medium")}>{row.name}</td>
+                            <td className={cellClass}>
+                                {row.sputum_collected === "1" ? (
+                                    <StatusPill tone="active">Yes</StatusPill>
+                                ) : row.sputum_collected === "0" ? (
+                                    <StatusPill tone="disabled">No</StatusPill>
+                                ) : (
+                                    <span className="text-[#bbb]">—</span>
                                 )}
-                            >
-                                {row.name}
                             </td>
                             <td className={cellClass}>
-                                <Checkbox
-                                    label={`Tested with GeneXpert: ${row.name}`}
-                                    checked={row.tested_gene_xpert === "1"}
-                                    disabled
-                                />
+                                <Recorded value={row.not_collected_reason} />
                             </td>
-                            <td className={cellClass}>
-                                <Checkbox
-                                    label={`Tested with DSSM: ${row.name}`}
-                                    checked={row.tested_dssm === "1"}
-                                    disabled
-                                />
-                            </td>
-                            {["dssm", "rr", "t", "tt", "ti"].map((code) => (
-                                <td key={code} className={cellClass}>
-                                    <Checkbox
-                                        label={`${code.toUpperCase()} positive: ${row.name}`}
-                                        checked={
-                                            row.diagnostic_result === "positive" &&
-                                            row.positive_classification === code
-                                        }
-                                        disabled
-                                    />
-                                </td>
-                            ))}
-                            <td className={cellClass}>
-                                <Checkbox
-                                    label={`Negative result: ${row.name}`}
-                                    checked={row.diagnostic_result === "negative"}
-                                    disabled
-                                />
-                            </td>
-                            <td className={cellClass}>
-                                <select
-                                    aria-label={`TB diagnosis for ${row.name}`}
-                                    className={cx(selectClass, "min-w-[135px]")}
-                                    disabled={!editing}
-                                    value={row.tb_case_classification}
-                                    onChange={(event) =>
-                                        setField(
-                                            row.id,
-                                            "tb_case_classification",
-                                            event.target.value,
-                                        )
-                                    }
-                                >
-                                    {/* The blank option's value is "" and one
-                                        real option's value is "none", so a
-                                        `value || "none"` fallback collides.
-                                        The values are already unique. */}
-                                    {tbDiagnoses.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </td>
-                            {/* Not editable: the status follows the treatment
-                                register, moving to "On Treatment" when the RHU
-                                enrols the patient in Patient Monitoring. */}
-                            <td className={cellClass}>
-                                <TreatmentStatus status={row.treatment_status} />
-                            </td>
-                            <td className={cellClass}>
-                                <RemarksCell
-                                    row={row}
-                                    editing={editing}
-                                    setField={setField}
-                                />
+                            <td className={cx(cellClass, "text-left whitespace-normal")}>
+                                <Recorded value={row.remarks} />
                             </td>
                         </tr>
                     ))
                 ) : (
                     <tr>
-                        <td
-                            colSpan={13}
-                            className="px-6 py-8 text-center text-[#bbb]"
-                        >
+                        <td colSpan={5} className="px-6 py-8 text-center text-[#bbb]">
                             No patients in this program yet.
                         </td>
                     </tr>
@@ -650,15 +452,68 @@ function DiagnosticTable({ rows, editing, setField }) {
     );
 }
 
-function RemarksCell({ row, editing, setField }) {
+function DiagnosticTable({ rows }) {
     return (
-        <textarea
-            aria-label={`Remarks for ${row.name}`}
-            className={remarksClass}
-            placeholder="Add remarks..."
-            disabled={!editing}
-            value={row.remarks}
-            onChange={(event) => setField(row.id, "remarks", event.target.value)}
-        />
+        <table className="w-full border-collapse text-xs">
+            <thead className="sticky top-0 z-[2]">
+                <tr>
+                    <th className={cx(headClass, "min-w-[60px]")} rowSpan={2}>
+                        No.
+                    </th>
+                    <th className={cx(headClass, "min-w-[160px] text-left")} rowSpan={2}>
+                        Patient Name
+                    </th>
+                    <th className={groupHeadClass} colSpan={2}>
+                        Diagnostic Testing
+                    </th>
+                    <th className={groupHeadClass} colSpan={3}>
+                        Final Classification
+                    </th>
+                </tr>
+                <tr>
+                    <th className={cx(headClass, "min-w-[150px]")}>GXpert Result (3a)</th>
+                    <th className={cx(headClass, "min-w-[150px]")}>DSSM Result (3b)</th>
+                    <th className={cx(headClass, "min-w-[120px]")}>TB Diagnosis</th>
+                    <th className={cx(headClass, "min-w-[140px]")}>Treatment Status</th>
+                    <th className={cx(headClass, "min-w-[220px] text-left")}>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows.length > 0 ? (
+                    rows.map((row) => (
+                        <tr key={row.id} className="hover:bg-[#fdf8f8]">
+                            <td className={cellClass}>{row.number}</td>
+                            <td className={cx(cellClass, "text-left font-medium")}>{row.name}</td>
+                            <td className={cellClass}>
+                                <Recorded value={testResult(row, row.tested_gene_xpert)} />
+                            </td>
+                            <td className={cellClass}>
+                                <Recorded value={testResult(row, row.tested_dssm)} />
+                            </td>
+                            <td className={cellClass}>
+                                <Recorded
+                                    value={diagnosisLabel(row.tb_case_classification)}
+                                    className="font-semibold"
+                                />
+                            </td>
+                            {/* Follows the treatment register: "On Treatment"
+                                once the RHU enrols the patient. */}
+                            <td className={cellClass}>
+                                <TreatmentStatus status={row.treatment_status} />
+                            </td>
+                            <td className={cx(cellClass, "text-left whitespace-normal")}>
+                                <Recorded value={row.diagnostic_remarks} />
+                            </td>
+                        </tr>
+                    ))
+                ) : (
+                    <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center text-[#bbb]">
+                            No patients in this program yet.
+                        </td>
+                    </tr>
+                )}
+            </tbody>
+        </table>
     );
 }
