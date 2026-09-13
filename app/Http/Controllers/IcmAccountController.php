@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Location;
 use App\Models\User;
 use App\Support\ActivityLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -38,8 +40,7 @@ class IcmAccountController extends Controller
 
                 $query->where(function (Builder $query) use ($escapedSearch) {
                     $query->where('name', 'like', '%'.$escapedSearch.'%')
-                        ->orWhere('email', 'like', '%'.$escapedSearch.'%')
-                        ->orWhere('organization', 'like', '%'.$escapedSearch.'%');
+                        ->orWhere('email', 'like', '%'.$escapedSearch.'%');
                 });
             })
             ->latest()
@@ -56,9 +57,6 @@ class IcmAccountController extends Controller
                 'name' => $account->name,
                 'email' => $account->email,
                 'role' => $account->role,
-                'organization' => $account->organization,
-                'position' => $account->position,
-                'phone' => $account->phone,
                 'is_active' => $account->disabled_at === null,
                 'disabled_at' => $account->disabled_at?->toIso8601String(),
                 'created_at' => $account->created_at?->toIso8601String(),
@@ -72,6 +70,9 @@ class IcmAccountController extends Controller
                 'active' => (clone $managedAccounts)->whereNull('disabled_at')->count(),
                 'disabled' => (clone $managedAccounts)->whereNotNull('disabled_at')->count(),
             ],
+            'locations' => Location::where('level', 'municipality')
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -81,27 +82,39 @@ class IcmAccountController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'role' => ['required', Rule::in(['rhu', 'provider'])],
-            'organization' => ['nullable', 'string', 'max:150'],
-            'position' => ['nullable', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'location_id' => [
+                'nullable',
+                'required_if:role,rhu',
+                Rule::exists('locations', 'id')->where('level', 'municipality'),
+            ],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        $account = DB::transaction(function () use ($request, $validated) {
-            $account = User::create($validated);
-            $account->forceFill(['email_verified_at' => now()])->save();
+        try {
+            $account = DB::transaction(function () use ($request, $validated) {
+                $account = User::create($validated);
+                $account->forceFill(['email_verified_at' => now()])->save();
 
-            ActivityLogger::record(
-                $request->user(),
-                'account.created',
-                'Created '.$this->roleLabel($account).' account',
-                "{$account->name} ({$account->email}) can now sign in to CareLink.",
-                ['account_id' => $account->id],
-                $account,
-            );
+                ActivityLogger::record(
+                    $request->user(),
+                    'account.created',
+                    'Created '.$this->roleLabel($account).' account',
+                    "{$account->name} ({$account->email}) can now sign in to CareLink.",
+                    ['account_id' => $account->id],
+                    $account,
+                );
 
-            return $account;
-        });
+                return $account;
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Account creation failed', [
+                'created_by' => $request->user()->id,
+                'email_attempt' => $validated['email'],
+                'role_attempt' => $validated['role'],
+                'exception' => $exception->getMessage(),
+            ]);
+            throw $exception;
+        }
 
         return back()->with('success', "Account for {$account->name} was created successfully.");
     }
@@ -119,27 +132,37 @@ class IcmAccountController extends Controller
             return back();
         }
 
-        DB::transaction(function () use ($request, $account, $activate) {
-            $account->forceFill([
-                'disabled_at' => $activate ? null : now(),
-                'remember_token' => $activate ? $account->remember_token : Str::random(60),
-            ])->save();
+        try {
+            DB::transaction(function () use ($request, $account, $activate) {
+                $account->forceFill([
+                    'disabled_at' => $activate ? null : now(),
+                    'remember_token' => $activate ? $account->remember_token : Str::random(60),
+                ])->save();
 
-            if (! $activate && config('session.driver') === 'database') {
-                DB::table(config('session.table', 'sessions'))
-                    ->where('user_id', $account->id)
-                    ->delete();
-            }
+                if (! $activate && config('session.driver') === 'database') {
+                    DB::table(config('session.table', 'sessions'))
+                        ->where('user_id', $account->id)
+                        ->delete();
+                }
 
-            ActivityLogger::record(
-                $request->user(),
-                $activate ? 'account.enabled' : 'account.disabled',
-                ($activate ? 'Enabled ' : 'Disabled ').$this->roleLabel($account).' account',
-                "{$account->name} ({$account->email}) was ".($activate ? 'restored' : 'denied sign-in access').'.',
-                ['account_id' => $account->id],
-                $account,
-            );
-        });
+                ActivityLogger::record(
+                    $request->user(),
+                    $activate ? 'account.enabled' : 'account.disabled',
+                    ($activate ? 'Enabled ' : 'Disabled ').$this->roleLabel($account).' account',
+                    "{$account->name} ({$account->email}) was ".($activate ? 'restored' : 'denied sign-in access').'.',
+                    ['account_id' => $account->id],
+                    $account,
+                );
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Update account failed', [
+                'updated_by' => $request->user()->id,
+                'account_id' => $account->id,
+                'target_activation' => $activate,
+                'exception' => $exception->getMessage(),
+            ]);
+            throw $exception;
+        }
 
         $action = $activate ? 'enabled' : 'disabled';
 

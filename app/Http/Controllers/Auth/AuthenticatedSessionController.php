@@ -37,9 +37,9 @@ class AuthenticatedSessionController extends Controller
         );
 
         return match ($request->user()->role) {
-            'icm' => redirect()->intended(route('icm.dashboard', [], false)),
-            'rhu' => redirect()->intended(route('rhu.dashboard', [], false)),
-            'provider' => redirect()->intended(route('provider.dashboard', [], false)),
+            'icm' => redirect()->route('icm.dashboard'),
+            'rhu' => redirect()->route('rhu.dashboard'),
+            'provider' => redirect()->route('provider.dashboard'),
             default => redirect('/'),
         };
     }

@@ -131,15 +131,15 @@ export default function ProgramFormModal({
                                     aria-invalid={Boolean(errors.patient_name)}
                                 />
                             </Field>
-                            <Field label="Age" error={errors.age}>
+                            <Field label="Birthday" error={errors.date_of_birth}>
                                 <input
-                                    type="number"
-                                    min="0"
-                                    max="120"
-                                    value={data.age}
-                                    onChange={(event) => setData("age", event.target.value)}
-                                    placeholder="Age in years"
-                                    aria-invalid={Boolean(errors.age)}
+                                    type="date"
+                                    max={new Date().toISOString().slice(0, 10)}
+                                    value={data.date_of_birth}
+                                    onChange={(event) =>
+                                        setData("date_of_birth", event.target.value)
+                                    }
+                                    aria-invalid={Boolean(errors.date_of_birth)}
                                 />
                             </Field>
                             <Field label="Sex" error={errors.sex}>

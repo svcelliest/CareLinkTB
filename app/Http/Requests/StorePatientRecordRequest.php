@@ -30,7 +30,7 @@ class StorePatientRecordRequest extends FormRequest
             'form_type' => ['required', 'in:sputum_collection,contact_tracing'],
             'patient_id' => ['nullable', 'string', 'max:80'],
             'patient_name' => ['required', 'string', 'max:150'],
-            'age' => ['nullable', 'integer', 'min:0', 'max:120'],
+            'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
             'sex' => ['nullable', 'in:male,female'],
             'contact_number' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string'],

@@ -1,7 +1,6 @@
 import {
     FaTableCellsLarge,
     FaBookOpen,
-    FaFileLines,
     FaEnvelope,
     FaChartLine,
     FaClipboardList,
@@ -33,7 +32,6 @@ export const navConfig = {
                 route: "icm.accounts.index",
                 Icon: FaUsersGear,
             },
-            { label: "Records", route: "icm.records.index", Icon: FaFileLines },
             {
                 label: "Archives",
                 route: "icm.archives.index",
