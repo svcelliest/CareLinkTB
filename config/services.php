@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'unisms' => [
+        'key' => env('UNISMS_SECRET_KEY'),
+        'sender_id' => env('UNISMS_SENDER_ID'),
+    ],
+
 ];

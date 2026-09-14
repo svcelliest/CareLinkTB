@@ -7,6 +7,7 @@ import {
     FaClock,
     FaDownload,
     FaMagnifyingGlass,
+    FaPen,
     FaRotateRight,
     FaTriangleExclamation,
     FaXmark,
@@ -88,9 +89,6 @@ function pendingStorageKey(programId) {
     return `screening-pending-${programId}`;
 }
 
-// A patient that failed to save (e.g. connection dropped mid-registration)
-// is kept here so the draft survives a closed tab or a lost connection,
-// and reappears with a Retry button next time this page loads.
 function readPendingBackups(programId) {
     try {
         const raw = window.localStorage.getItem(pendingStorageKey(programId));
@@ -215,6 +213,7 @@ export default function Screening({ program, patients: initialPatientsData }) {
     );
     const [form, setForm] = useState(blankForm);
     const [error, setError] = useState("");
+    const [editingClientId, setEditingClientId] = useState(null);
     const [search, setSearch] = useState("");
     const [finishing, setFinishing] = useState(false);
     const [sessionInvalid, setSessionInvalid] = useState(null);
@@ -261,6 +260,19 @@ export default function Screening({ program, patients: initialPatientsData }) {
     const clearForm = () => {
         setForm(blankForm);
         setError("");
+        setEditingClientId(null);
+    };
+
+    const startEdit = (patient) => {
+        setError("");
+        setEditingClientId(patient.clientId);
+        setForm({
+            name: patient.name,
+            birthday: patient.date_of_birth ?? "",
+            sex: patient.sex,
+            address: patient.address,
+            contact_number: patient.contact_number,
+        });
     };
 
     const resolveRow = (clientId, savedPatient) => {
@@ -287,7 +299,9 @@ export default function Screening({ program, patients: initialPatientsData }) {
             return;
         }
         const message =
-            Object.values(errors)[0] ?? err.message ?? "Failed to save. Tap retry.";
+            Object.values(errors)[0] ??
+            err.message ??
+            "Failed to save. Tap retry.";
         setPatients((prev) =>
             prev.map((p) =>
                 p.clientId === clientId
@@ -317,6 +331,11 @@ export default function Screening({ program, patients: initialPatientsData }) {
 
         if (form.birthday > today) {
             setError("Birthday cannot be in the future.");
+            return;
+        }
+
+        if (editingClientId !== null) {
+            updatePatient();
             return;
         }
 
@@ -350,15 +369,68 @@ export default function Screening({ program, patients: initialPatientsData }) {
             },
         ]);
 
-        // Written immediately, before the request even resolves — if the
-        // connection drops right now, the draft is still recoverable.
         writePendingBackup(program.id, clientId, payload, null);
         clearForm();
 
         apiRequest("POST", url, payload)
             .then((data) => resolveRow(clientId, data.saved_patient))
             .catch((err) =>
-                handleRowError(clientId, err, { method: "store", url, payload }),
+                handleRowError(clientId, err, {
+                    method: "store",
+                    url,
+                    payload,
+                }),
+            );
+    };
+
+    const updatePatient = () => {
+        const clientId = editingClientId;
+        const patient = patients.find((p) => p.clientId === clientId);
+        if (!patient) {
+            clearForm();
+            return;
+        }
+
+        const payload = {
+            name: form.name.trim(),
+            date_of_birth: form.birthday,
+            sex: form.sex,
+            address: form.address.trim(),
+            contact_number: form.contact_number.trim(),
+            presumptive: patient.status === "Presumptive TB",
+        };
+        const url = route("provider.programs.patients.update", [
+            program.id,
+            patient.id,
+        ]);
+
+        setPatients((prev) =>
+            prev.map((p) =>
+                p.clientId === clientId
+                    ? {
+                          ...p,
+                          name: payload.name,
+                          date_of_birth: payload.date_of_birth,
+                          age: calcAge(payload.date_of_birth),
+                          sex: payload.sex,
+                          address: payload.address,
+                          contact_number: payload.contact_number,
+                          sync: "saving",
+                          syncError: null,
+                      }
+                    : p,
+            ),
+        );
+        clearForm();
+
+        apiRequest("PATCH", url, payload)
+            .then((data) => resolveRow(clientId, data.saved_patient))
+            .catch((err) =>
+                handleRowError(clientId, err, {
+                    method: "update",
+                    url,
+                    payload,
+                }),
             );
     };
 
@@ -473,10 +545,15 @@ export default function Screening({ program, patients: initialPatientsData }) {
 
         apiRequest(
             "DELETE",
-            route("provider.programs.patients.destroy", [program.id, patient.id]),
+            route("provider.programs.patients.destroy", [
+                program.id,
+                patient.id,
+            ]),
         )
             .then(() =>
-                setPatients((prev) => prev.filter((p) => p.clientId !== clientId)),
+                setPatients((prev) =>
+                    prev.filter((p) => p.clientId !== clientId),
+                ),
             )
             .catch((err) => {
                 const errors = err.errors ?? {};
@@ -544,7 +621,11 @@ export default function Screening({ program, patients: initialPatientsData }) {
                             type="button"
                             className="finish-btn"
                             onClick={finishSession}
-                            disabled={finishing || hasUnsettledRows || !!sessionInvalid}
+                            disabled={
+                                finishing ||
+                                hasUnsettledRows ||
+                                !!sessionInvalid
+                            }
                             title={
                                 sessionInvalid
                                     ? "This session was already finished."
@@ -566,7 +647,9 @@ export default function Screening({ program, patients: initialPatientsData }) {
                     </p>
                     <div className="screening-status-row">
                         <span className="active-dot" />
-                        <span className="active-session-label">Active Session</span>
+                        <span className="active-session-label">
+                            Active Session
+                        </span>
                         <span className="session-meta">
                             Total Patients: <strong>{totalPatients}</strong>
                         </span>
@@ -598,11 +681,20 @@ export default function Screening({ program, patients: initialPatientsData }) {
 
                 <div className="screening-body">
                     <div className="register-card">
-                        <h3 className="register-title">Register Patient</h3>
+                        <h3 className="register-title">
+                            {editingClientId !== null
+                                ? "Edit Patient"
+                                : "Register Patient"}
+                        </h3>
                         <form onSubmit={addPatient}>
-                            <fieldset disabled={!!sessionInvalid} className="register-fieldset">
+                            <fieldset
+                                disabled={!!sessionInvalid}
+                                className="register-fieldset"
+                            >
                                 <div className="field-group">
-                                    <label className="field-label">Full Name</label>
+                                    <label className="field-label">
+                                        Full Name
+                                    </label>
                                     <input
                                         type="text"
                                         className="field-input"
@@ -615,67 +707,98 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                 </div>
                                 <div className="field-row">
                                     <div className="field-group">
-                                        <label className="field-label">Birthday</label>
+                                        <label className="field-label">
+                                            Birthday
+                                        </label>
                                         <input
                                             type="date"
                                             className="field-input"
                                             max={today}
                                             value={form.birthday}
                                             onChange={(event) =>
-                                                setField("birthday", event.target.value)
+                                                setField(
+                                                    "birthday",
+                                                    event.target.value,
+                                                )
                                             }
                                         />
                                     </div>
                                     <div className="field-group">
-                                        <label className="field-label">Sex</label>
+                                        <label className="field-label">
+                                            Sex
+                                        </label>
                                         <select
                                             className="field-select"
                                             value={form.sex}
                                             onChange={(event) =>
-                                                setField("sex", event.target.value)
+                                                setField(
+                                                    "sex",
+                                                    event.target.value,
+                                                )
                                             }
                                         >
                                             <option value="">Select sex</option>
                                             <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
+                                            <option value="Female">
+                                                Female
+                                            </option>
                                         </select>
                                     </div>
                                 </div>
                                 <div className="field-group">
-                                    <label className="field-label">Address</label>
+                                    <label className="field-label">
+                                        Address
+                                    </label>
                                     <input
                                         type="text"
                                         className="field-input"
                                         value={form.address}
                                         onChange={(event) =>
-                                            setField("address", event.target.value)
+                                            setField(
+                                                "address",
+                                                event.target.value,
+                                            )
                                         }
                                         placeholder="Barangay, municipality, province"
                                     />
                                 </div>
                                 <div className="field-group">
-                                    <label className="field-label">Contact Number</label>
+                                    <label className="field-label">
+                                        Contact Number
+                                    </label>
                                     <input
                                         type="text"
                                         className="field-input"
                                         value={form.contact_number}
                                         onChange={(event) =>
-                                            setField("contact_number", event.target.value)
+                                            setField(
+                                                "contact_number",
+                                                event.target.value,
+                                            )
                                         }
                                         placeholder="09xxxxxxxxx"
                                     />
                                 </div>
-                                {error && <p className="field-error">{error}</p>}
+                                {error && (
+                                    <p className="field-error">{error}</p>
+                                )}
                                 <div className="reg-btn-row">
-                                    <button type="submit" className="add-patient-btn">
-                                        Add Patient
+                                    <button
+                                        type="submit"
+                                        className="add-patient-btn"
+                                    >
+                                        {editingClientId !== null
+                                            ? "Update Patient"
+                                            : "Add Patient"}
                                     </button>
                                     <button
                                         type="button"
                                         className="clear-btn"
                                         onClick={clearForm}
                                     >
-                                        Clear
+                                        {editingClientId !== null
+                                            ? "Cancel"
+                                            : "Clear"}
                                     </button>
                                 </div>
                             </fieldset>
@@ -689,7 +812,9 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                 <input
                                     type="search"
                                     value={search}
-                                    onChange={(event) => setSearch(event.target.value)}
+                                    onChange={(event) =>
+                                        setSearch(event.target.value)
+                                    }
                                     placeholder="Search patients"
                                 />
                             </label>
@@ -697,7 +822,10 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                 type="button"
                                 className="patient-export-btn"
                                 onClick={() =>
-                                    exportPatientsCsv(numberedPatients, program.name)
+                                    exportPatientsCsv(
+                                        numberedPatients,
+                                        program.name,
+                                    )
                                 }
                             >
                                 <FaDownload aria-hidden="true" />
@@ -722,7 +850,9 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                         {visiblePatients.map((patient) => (
                                             <tr
                                                 key={patient.clientId}
-                                                className={rowClassName(patient)}
+                                                className={rowClassName(
+                                                    patient,
+                                                )}
                                             >
                                                 <td>{patient.number}</td>
                                                 <td>
@@ -735,7 +865,8 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                                 </td>
                                                 <td>
                                                     <span className="patient-age">
-                                                        {patient.age} / {patient.sex}
+                                                        {patient.age} /{" "}
+                                                        {patient.sex}
                                                     </span>
                                                     <span className="patient-addr">
                                                         {patient.address}
@@ -757,6 +888,23 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                                     <div className="action-col">
                                                         <button
                                                             type="button"
+                                                            className="action-edit-btn"
+                                                            onClick={() =>
+                                                                startEdit(
+                                                                    patient,
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                patient.sync !==
+                                                                    "saved" ||
+                                                                !!sessionInvalid
+                                                            }
+                                                            aria-label="Edit patient"
+                                                        >
+                                                            <FaPen aria-hidden="true" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
                                                             className={`action-warn-btn ${patient.status === "Presumptive TB" ? "active" : ""}`}
                                                             onClick={() =>
                                                                 togglePresumptive(
@@ -764,7 +912,8 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                                                 )
                                                             }
                                                             disabled={
-                                                                patient.sync !== "saved" ||
+                                                                patient.sync !==
+                                                                    "saved" ||
                                                                 !!sessionInvalid
                                                             }
                                                             aria-label="Toggle presumptive status"
@@ -775,11 +924,14 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                                             type="button"
                                                             className={`action-notify-btn ${patient.notified ? "sent" : ""}`}
                                                             onClick={() =>
-                                                                notifyPatient(patient.clientId)
+                                                                notifyPatient(
+                                                                    patient.clientId,
+                                                                )
                                                             }
                                                             disabled={
                                                                 patient.notified ||
-                                                                patient.sync !== "saved"
+                                                                patient.sync !==
+                                                                    "saved"
                                                             }
                                                             aria-label="Notify patient"
                                                         >
@@ -789,15 +941,19 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                                             type="button"
                                                             className="action-more-btn"
                                                             onClick={() =>
-                                                                removePatient(patient.clientId)
+                                                                removePatient(
+                                                                    patient.clientId,
+                                                                )
                                                             }
                                                             disabled={
-                                                                patient.sync === "deleting" ||
+                                                                patient.sync ===
+                                                                    "deleting" ||
                                                                 !!sessionInvalid
                                                             }
                                                             aria-label="Remove patient"
                                                         >
-                                                            {patient.sync === "deleting" ? (
+                                                            {patient.sync ===
+                                                            "deleting" ? (
                                                                 <span className="row-spinner" />
                                                             ) : (
                                                                 <FaXmark aria-hidden="true" />
@@ -813,27 +969,34 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                                                 Saved
                                                             </span>
                                                         )}
-                                                    {patient.sync === "saving" && (
+                                                    {patient.sync ===
+                                                        "saving" && (
                                                         <span className="sync-indicator sync-saving">
                                                             <span className="row-spinner" />
                                                             Saving…
                                                         </span>
                                                     )}
-                                                    {patient.sync === "deleting" && (
+                                                    {patient.sync ===
+                                                        "deleting" && (
                                                         <span className="sync-indicator sync-deleting">
                                                             <span className="row-spinner" />
                                                             Removing…
                                                         </span>
                                                     )}
-                                                    {patient.sync === "failed" && (
+                                                    {patient.sync ===
+                                                        "failed" && (
                                                         <div className="sync-failed-group">
                                                             <button
                                                                 type="button"
                                                                 className="sync-retry-btn"
                                                                 onClick={() =>
-                                                                    retry(patient.clientId)
+                                                                    retry(
+                                                                        patient.clientId,
+                                                                    )
                                                                 }
-                                                                disabled={!!sessionInvalid}
+                                                                disabled={
+                                                                    !!sessionInvalid
+                                                                }
                                                             >
                                                                 <FaRotateRight aria-hidden="true" />
                                                                 Retry
@@ -848,7 +1011,9 @@ export default function Screening({ program, patients: initialPatientsData }) {
                                                         patient.syncError && (
                                                             <span
                                                                 className="sync-indicator sync-transient-error"
-                                                                title={patient.syncError}
+                                                                title={
+                                                                    patient.syncError
+                                                                }
                                                             >
                                                                 <FaTriangleExclamation aria-hidden="true" />
                                                                 Failed

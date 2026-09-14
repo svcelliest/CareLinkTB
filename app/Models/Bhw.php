@@ -13,6 +13,7 @@ class Bhw extends Model
 
     protected $fillable = [
         'added_by',
+        'location_id',
         'name',
         'contact_number',
         'address',
@@ -21,6 +22,11 @@ class Bhw extends Model
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by');
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function smsLogs(): HasMany
