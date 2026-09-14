@@ -23,7 +23,7 @@ class UniSmsClient
 
         if ($response->failed()) {
             throw new RuntimeException(
-                'SMS could not be sent: '.($response->json('message') ?? $response->body()),
+                'SMS could not be sent: ' . ($response->json('message') ?? $response->body()),
             );
         }
 
@@ -35,17 +35,17 @@ class UniSmsClient
      *
      * @return array<string, mixed> {status, content, created, recipient, reference_id, fail_reason}
      */
-    public function checkStatus(string $referenceId): array
-    {
-        $response = Http::withBasicAuth((string) config('services.unisms.key'), '')
-            ->get("https://unismsapi.com/api/sms/{$referenceId}");
+    // public function checkStatus(string $referenceId): array
+    // {
+    //     $response = Http::withBasicAuth((string) config('services.unisms.key'), '')
+    //         ->get("https://unismsapi.com/api/sms/{$referenceId}");
 
-        if ($response->failed()) {
-            throw new RuntimeException(
-                'Could not check SMS status: '.($response->json('message') ?? $response->body()),
-            );
-        }
+    //     if ($response->failed()) {
+    //         throw new RuntimeException(
+    //             'Could not check SMS status: '.($response->json('message') ?? $response->body()),
+    //         );
+    //     }
 
-        return $response->json('message') ?? [];
-    }
+    //     return $response->json('message') ?? [];
+    // }
 }
