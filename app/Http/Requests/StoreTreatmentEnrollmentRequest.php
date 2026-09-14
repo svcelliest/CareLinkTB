@@ -29,11 +29,12 @@ class StoreTreatmentEnrollmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'case_number' => ['required', 'string', 'max:30', Rule::unique('treatment_enrollments', 'case_number')],
+            'registry_number' => ['required', 'string', 'max:30', Rule::unique('treatment_enrollments', 'registry_number')],
             'treatment_facility' => ['required', 'string', 'max:150'],
             'diagnosing_facility' => ['nullable', 'string', 'max:150'],
             'registration_date' => ['required', 'date', 'before_or_equal:today'],
             'treatment_start_date' => ['required', 'date', 'after_or_equal:registration_date'],
+            'baseline_weight' => ['nullable', 'numeric', 'min:0', 'max:999.9'],
             'registration_group' => [
                 'required',
                 Rule::in([
@@ -44,7 +45,16 @@ class StoreTreatmentEnrollmentRequest extends FormRequest
                     'transfer_in',
                 ]),
             ],
-            'treatment_regimen' => ['required', Rule::in(['standard_dstb', 'drug_resistant'])],
+            'treatment_regimen' => [
+                'required',
+                Rule::in([
+                    'category_1_new',
+                    'category_2_retreatment',
+                    'category_3_new_ep',
+                    'category_4_retreatment_ep',
+                    'drug_resistant',
+                ]),
+            ],
         ];
     }
 }
