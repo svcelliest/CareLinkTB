@@ -20,7 +20,6 @@ class DiagnosticAssessment extends Model
         'result_tt',
         'result_ti',
         'result_negative',
-        'registry_number',
         'tb_diagnosis',
         'remarks',
         'recorded_by',
@@ -48,5 +47,18 @@ class DiagnosticAssessment extends Model
     public function recorder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    /**
+     * Display label for the mockup's "Enrolled / Screened As" field.
+     */
+    public function diagnosisLabel(): ?string
+    {
+        return match ($this->tb_diagnosis) {
+            'dstb_cd' => 'Clinically Diagnosed',
+            'dstb_bc' => 'Bacteriologically Confirmed',
+            'rrtb_bc' => 'Rifampicin-Resistant, Bacteriologically Confirmed',
+            default => null,
+        };
     }
 }

@@ -1,20 +1,28 @@
 <?php
 
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\AuditTrailController;
 use App\Http\Controllers\BhwController;
+use App\Http\Controllers\ContactTracingController;
+use App\Http\Controllers\DiagnosticAssessmentController;
+use App\Http\Controllers\FollowUpExamController;
 use App\Http\Controllers\IcmAccountController;
 use App\Http\Controllers\IcmArchiveController;
 use App\Http\Controllers\IcmController;
+use App\Http\Controllers\MedicationDispensingController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PatientSummaryController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\RhuController;
 use App\Http\Controllers\SmsLogController;
+use App\Http\Controllers\SputumCollectionController;
 use App\Http\Controllers\TreatmentEnrollmentController;
+use App\Http\Controllers\TreatmentMonitoringController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\ProgramController;
 
 Route::get('/', function () {
     if (auth()->check()) {
@@ -47,6 +55,12 @@ Route::middleware(['auth', 'active', 'role:icm'])->group(function () {
         ->name('icm.archives.restore');
     Route::get('icm/inbox', [MessageController::class, 'index'])->name('icm.inbox');
     Route::get('icm/activity', [ActivityController::class, 'index'])->name('icm.activity');
+    Route::get('icm/patients/{patient}/sputum-collection', [SputumCollectionController::class, 'show'])
+        ->name('icm.patients.sputum-collection.show');
+    Route::post('icm/patients/{patient}/sputum-collection', [SputumCollectionController::class, 'store'])
+        ->name('icm.patients.sputum-collection.store');
+    Route::get('icm/patients/{patient}/diagnostic-assessment', [DiagnosticAssessmentController::class, 'show'])
+        ->name('icm.patients.diagnostic-assessment.show');
 });
 
 Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
@@ -58,6 +72,30 @@ Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
         ->name('rhu.patients.enroll.create');
     Route::post('rhu/patients/{patient}/enroll', [TreatmentEnrollmentController::class, 'store'])
         ->name('rhu.patients.enroll.store');
+    Route::get('rhu/patients/{patient}/audit-trail', [AuditTrailController::class, 'index'])
+        ->name('rhu.patients.audit-trail.index');
+    Route::get('rhu/patients/{patient}/contact-tracing', [ContactTracingController::class, 'show'])
+        ->name('rhu.patients.contact-tracing.show');
+    Route::post('rhu/patients/{patient}/contact-tracing', [ContactTracingController::class, 'store'])
+        ->name('rhu.patients.contact-tracing.store');
+    Route::get('rhu/treatment-enrollments/{treatmentEnrollment}/summary', [PatientSummaryController::class, 'show'])
+        ->name('rhu.treatment-enrollments.summary.show');
+    Route::get('rhu/treatment-enrollments/{treatmentEnrollment}/outcome', [TreatmentEnrollmentController::class, 'showOutcome'])
+        ->name('rhu.treatment-enrollments.outcome.show');
+    Route::patch('rhu/treatment-enrollments/{treatmentEnrollment}/outcome', [TreatmentEnrollmentController::class, 'updateOutcome'])
+        ->name('rhu.treatment-enrollments.outcome.update');
+    Route::get('rhu/treatment-enrollments/{treatmentEnrollment}/monitoring', [TreatmentMonitoringController::class, 'index'])
+        ->name('rhu.treatment-enrollments.monitoring.index');
+    Route::post('rhu/treatment-enrollments/{treatmentEnrollment}/monitoring', [TreatmentMonitoringController::class, 'store'])
+        ->name('rhu.treatment-enrollments.monitoring.store');
+    Route::get('rhu/treatment-enrollments/{treatmentEnrollment}/follow-up-exams', [FollowUpExamController::class, 'index'])
+        ->name('rhu.treatment-enrollments.follow-up-exams.index');
+    Route::post('rhu/treatment-enrollments/{treatmentEnrollment}/follow-up-exams', [FollowUpExamController::class, 'store'])
+        ->name('rhu.treatment-enrollments.follow-up-exams.store');
+    Route::get('rhu/treatment-monitoring/{treatmentMonitoringRecord}/dispensing', [MedicationDispensingController::class, 'index'])
+        ->name('rhu.treatment-monitoring.dispensing.index');
+    Route::post('rhu/treatment-monitoring/{treatmentMonitoringRecord}/dispensing', [MedicationDispensingController::class, 'store'])
+        ->name('rhu.treatment-monitoring.dispensing.store');
     Route::get('rhu/bhws', [BhwController::class, 'index'])->name('rhu.bhws.index');
     Route::post('rhu/bhws', [BhwController::class, 'store'])->name('rhu.bhws.store');
     Route::delete('rhu/bhws/{bhw}', [BhwController::class, 'destroy'])->name('rhu.bhws.destroy');
@@ -65,6 +103,12 @@ Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
     Route::post('rhu/sms-logs', [SmsLogController::class, 'store'])->name('rhu.sms-logs.store');
     Route::get('rhu/inbox', [MessageController::class, 'index'])->name('rhu.inbox');
     Route::get('rhu/activity', [ActivityController::class, 'index'])->name('rhu.activity');
+    Route::get('rhu/patients/{patient}/diagnostic-assessment', [DiagnosticAssessmentController::class, 'show'])
+        ->name('rhu.patients.diagnostic-assessment.show');
+    Route::post('rhu/patients/{patient}/diagnostic-assessment', [DiagnosticAssessmentController::class, 'store'])
+        ->name('rhu.patients.diagnostic-assessment.store');
+    Route::get('rhu/patients/{patient}/sputum-collection', [SputumCollectionController::class, 'show'])
+        ->name('rhu.patients.sputum-collection.show');
 });
 
 Route::middleware(['auth', 'active', 'role:provider'])->group(function () {
@@ -115,4 +159,4 @@ Route::get('/dashboard', function () {
     };
 })->middleware(['auth', 'active'])->name('dashboard');
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

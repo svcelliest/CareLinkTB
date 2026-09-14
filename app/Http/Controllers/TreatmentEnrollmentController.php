@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTreatmentEnrollmentRequest;
+use App\Http\Requests\UpdateTreatmentOutcomeRequest;
 use App\Models\Patient;
 use App\Models\TreatmentEnrollment;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,7 +79,7 @@ class TreatmentEnrollmentController extends Controller
                 $rhu,
                 'treatment.enrolled',
                 'Enrolled patient in treatment',
-                "{$patient->name} was enrolled under case number {$enrollment->case_number}.",
+                "{$patient->name} was enrolled under registry number {$enrollment->registry_number}.",
                 ['patient_id' => $patient->id, 'enrollment_id' => $enrollment->id],
                 $enrollment,
             );
@@ -88,5 +90,54 @@ class TreatmentEnrollmentController extends Controller
         return redirect()
             ->route('rhu.programs.show', $patient->program_id)
             ->with('success', "{$patient->name} was enrolled in treatment.");
+    }
+
+    public function showOutcome(Request $request, TreatmentEnrollment $treatmentEnrollment): JsonResponse
+    {
+        $rhu = $request->user();
+
+        abort_unless(
+            $rhu instanceof User
+                && $rhu->role === 'rhu'
+                && $treatmentEnrollment->patient?->program?->location_id === $rhu->location_id,
+            403,
+        );
+
+        return response()->json([
+            'outcome' => $treatmentEnrollment->only([
+                'outcome',
+                'outcome_date',
+                'recorded_by',
+                'outcome_remarks',
+            ]),
+        ]);
+    }
+
+    public function updateOutcome(UpdateTreatmentOutcomeRequest $request, TreatmentEnrollment $treatmentEnrollment): JsonResponse
+    {
+        $rhu = $request->user();
+
+        $treatmentEnrollment->update([
+            ...$request->validated(),
+            'recorded_by' => $rhu->id,
+        ]);
+
+        ActivityLogger::record(
+            $rhu,
+            'treatment.outcome_recorded',
+            'Recorded treatment outcome',
+            "Outcome for {$treatmentEnrollment->patient?->name} was set to {$treatmentEnrollment->outcome}.",
+            ['patient_id' => $treatmentEnrollment->patient_id, 'enrollment_id' => $treatmentEnrollment->id],
+            $treatmentEnrollment,
+        );
+
+        return response()->json([
+            'outcome' => $treatmentEnrollment->only([
+                'outcome',
+                'outcome_date',
+                'recorded_by',
+                'outcome_remarks',
+            ]),
+        ]);
     }
 }

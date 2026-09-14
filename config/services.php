@@ -40,4 +40,8 @@ return [
         'sender_id' => env('UNISMS_SENDER_ID'),
     ],
 
+    'follow_up_exams' => [
+        'reminder_window_days' => env('FOLLOW_UP_EXAM_REMINDER_DAYS', 3),
+    ],
+
 ];

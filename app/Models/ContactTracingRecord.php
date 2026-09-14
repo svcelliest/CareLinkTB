@@ -40,8 +40,15 @@ class ContactTracingRecord extends Model
             'rhu_contacted' => 'boolean',
             'started_medication' => 'boolean',
             'has_accompaniment' => 'boolean',
+            'household_count' => 'integer',
+            'household_symptoms_count' => 'integer',
+            'household_tb_count' => 'integer',
             'household_taking_medication' => 'boolean',
             'referral_cards_given' => 'boolean',
+            'tpt_total' => 'integer',
+            'tpt_0_4' => 'integer',
+            'tpt_5_14' => 'integer',
+            'tpt_15_plus' => 'integer',
             'tb_case_identified' => 'boolean',
         ];
     }

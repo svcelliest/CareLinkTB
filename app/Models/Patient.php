@@ -75,6 +75,11 @@ class Patient extends Model
         return $this->hasOne(DiagnosticAssessment::class);
     }
 
+    public function contactTracingRecord(): HasOne
+    {
+        return $this->hasOne(ContactTracingRecord::class);
+    }
+
     /**
      * Whether this record flags a presumptive TB case, derived from the
      * form-specific responses (sputum diagnostic result vs. contact-tracing
