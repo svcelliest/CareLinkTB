@@ -7,6 +7,7 @@ use App\Models\Patient;
 use App\Models\Program;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,9 +22,12 @@ class RhuController extends Controller
         ]);
     }
 
-    public function programs(): Response
+    public function programs(Request $request): Response
     {
+        $rhu = $request->user();
+
         $programs = Program::query()
+            ->where('location_id', $rhu->location_id)
             ->withCount([
                 'patients as form_entries_count',
                 'patients as completed_entries_count' => fn ($query) => $query->where('status', 'completed'),
@@ -50,8 +54,10 @@ class RhuController extends Controller
         ]);
     }
 
-    public function showProgram(Program $program): Response
+    public function showProgram(Request $request, Program $program): Response
     {
+        abort_unless($program->location_id === $request->user()->location_id, 403);
+
         $entries = $program->patients()
             ->orderByDesc('updated_at')
             ->get()
@@ -81,6 +87,8 @@ class RhuController extends Controller
     public function storeForm(StorePatientRecordRequest $request, Program $program): RedirectResponse
     {
         $rhu = $request->user();
+
+        abort_unless($program->location_id === $rhu->location_id, 403);
 
         $patient = DB::transaction(function () use ($rhu, $request, $program): Patient {
             $patient = $program->patients()->create([
