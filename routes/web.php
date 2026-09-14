@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\BhwController;
 use App\Http\Controllers\IcmAccountController;
 use App\Http\Controllers\IcmArchiveController;
 use App\Http\Controllers\IcmController;
@@ -9,6 +10,8 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\RhuController;
+use App\Http\Controllers\SmsLogController;
+use App\Http\Controllers\TreatmentEnrollmentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ProgramController;
@@ -51,6 +54,15 @@ Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
     Route::get('rhu/programs', [RhuController::class, 'programs'])->name('rhu.programs.index');
     Route::get('rhu/programs/{program}', [RhuController::class, 'showProgram'])->name('rhu.programs.show');
     Route::post('rhu/programs/{program}/forms', [RhuController::class, 'storeForm'])->name('rhu.programs.forms.store');
+    Route::get('rhu/patients/{patient}/enroll', [TreatmentEnrollmentController::class, 'create'])
+        ->name('rhu.patients.enroll.create');
+    Route::post('rhu/patients/{patient}/enroll', [TreatmentEnrollmentController::class, 'store'])
+        ->name('rhu.patients.enroll.store');
+    Route::get('rhu/bhws', [BhwController::class, 'index'])->name('rhu.bhws.index');
+    Route::post('rhu/bhws', [BhwController::class, 'store'])->name('rhu.bhws.store');
+    Route::delete('rhu/bhws/{bhw}', [BhwController::class, 'destroy'])->name('rhu.bhws.destroy');
+    Route::get('rhu/sms-logs', [SmsLogController::class, 'index'])->name('rhu.sms-logs.index');
+    Route::post('rhu/sms-logs', [SmsLogController::class, 'store'])->name('rhu.sms-logs.store');
     Route::get('rhu/inbox', [MessageController::class, 'index'])->name('rhu.inbox');
     Route::get('rhu/activity', [ActivityController::class, 'index'])->name('rhu.activity');
 });
