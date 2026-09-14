@@ -464,14 +464,6 @@ export default function ProgramFormModal({
                                             {yesNoOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                                         </select>
                                     </Field>
-                                    <Field label="Enrolled in TB treatment">
-                                        <select value={data.responses.contact_enrolled_treatment} onChange={(event) => setResponse("contact_enrolled_treatment", event.target.value)}>
-                                            {yesNoOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                        </select>
-                                    </Field>
-                                    <Field label="Contacts enrolled to TPT">
-                                        <input type="number" min="0" value={data.responses.contacts_enrolled_tpt} onChange={(event) => setResponse("contacts_enrolled_tpt", event.target.value)} />
-                                    </Field>
                                     <Field label="Remarks" wide>
                                         <textarea rows="3" value={data.responses.remarks} onChange={(event) => setResponse("remarks", event.target.value)} placeholder="Optional notes or follow-up details" />
                                     </Field>

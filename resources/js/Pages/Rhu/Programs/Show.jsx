@@ -63,8 +63,6 @@ const blankResponses = {
     tpt_not_enrolled_reason: "",
     enumerator_name: "",
     tb_case_identified: "",
-    contact_enrolled_treatment: "",
-    contacts_enrolled_tpt: "",
     remarks: "",
 };
 

@@ -29,8 +29,6 @@ class ContactTracingRecord extends Model
         'tpt_not_enrolled_reason',
         'enumerator_name',
         'tb_case_identified',
-        'contact_enrolled_treatment',
-        'contacts_enrolled_tpt',
         'remarks',
         'recorded_by',
     ];
@@ -45,7 +43,6 @@ class ContactTracingRecord extends Model
             'household_taking_medication' => 'boolean',
             'referral_cards_given' => 'boolean',
             'tb_case_identified' => 'boolean',
-            'contact_enrolled_treatment' => 'boolean',
         ];
     }
 
