@@ -3,9 +3,13 @@ import {
     FaBookOpen,
     FaEnvelope,
     FaChartLine,
-    FaClipboardList,
     FaUsersGear,
     FaBoxArchive,
+    FaHouseChimneyMedical,
+    FaHeartPulse,
+    FaCircleCheck,
+    FaCommentDots,
+    FaClockRotateLeft,
 } from "react-icons/fa6";
 
 export const navConfig = {
@@ -28,6 +32,11 @@ export const navConfig = {
                 Icon: FaBookOpen,
             },
             {
+                label: "Contact Tracing",
+                route: "icm.contact-tracing.index",
+                Icon: FaHouseChimneyMedical,
+            },
+            {
                 label: "Accounts",
                 route: "icm.accounts.index",
                 Icon: FaUsersGear,
@@ -46,6 +55,9 @@ export const navConfig = {
         ],
     },
 
+    // Order and labels follow the medjofinal-rhu-provider-portals reference
+    // exactly. There is no Programs entry: programs stay ICM-owned, and the
+    // RHU reaches them through the Patient Tracker's program filter.
     rhu: {
         portalLabel: "Rural Health Unit",
         portalInitials: "RHU",
@@ -60,15 +72,25 @@ export const navConfig = {
                 Icon: FaTableCellsLarge,
             },
             {
-                label: "Programs & Forms",
-                route: "rhu.programs.index",
-                Icon: FaClipboardList,
+                label: "Patient Monitoring",
+                route: "rhu.treatment.index",
+                Icon: FaHeartPulse,
+            },
+            {
+                label: "Patient Tracker",
+                route: "rhu.tracker.index",
+                Icon: FaCircleCheck,
             },
             { label: "Inbox", route: "rhu.inbox", Icon: FaEnvelope },
             {
-                label: "Recent Activity",
+                label: "SMS Log",
+                route: "rhu.sms-logs.index",
+                Icon: FaCommentDots,
+            },
+            {
+                label: "Recent Activities",
                 route: "rhu.activity",
-                Icon: FaChartLine,
+                Icon: FaClockRotateLeft,
             },
         ],
     },

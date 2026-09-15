@@ -65,6 +65,22 @@ class Patient extends Model
         return $this->hasMany(TreatmentEnrollment::class);
     }
 
+    /**
+     * The enrollment episode currently in force — the still-open one if
+     * there is one, otherwise whichever was enrolled most recently. A
+     * patient can have more than one over time (e.g. a relapse), so this
+     * picks the one everything else (Contact Tracing's defaults, etc.)
+     * should read from when it needs "the" enrollment for this patient.
+     */
+    public function currentTreatmentEnrollment(): ?TreatmentEnrollment
+    {
+        return $this->treatmentEnrollments()
+            ->whereNull('outcome')
+            ->latest('treatment_start_date')
+            ->first()
+            ?? $this->treatmentEnrollments()->latest('treatment_start_date')->first();
+    }
+
     public function sputumCollection(): HasOne
     {
         return $this->hasOne(SputumCollection::class);
@@ -97,5 +113,44 @@ class Patient extends Model
         }
 
         return ($this->responses['tb_case_identified'] ?? null) === '1';
+    }
+
+    /**
+     * The ACF Activity fields as the system already knows them, ported from
+     * the medjofinal reference's `acfDefaults()` — computed live, never
+     * stored on contact_tracing_records, so it can never drift from the
+     * patient/program/enrollment rows it's read from.
+     *
+     * Improvement over the reference: province/municipality prefer the
+     * program's actual location relation (a real FK) over re-parsing the
+     * free-text address, falling back to the address split only when no
+     * program/location is set.
+     *
+     * @return array<string, string|null>
+     */
+    public function acfDefaults(): array
+    {
+        $program = $this->program;
+        $address = $this->address ?? '';
+
+        // Stored as "Barangay/Sitio, Municipality, Province"; a shorter
+        // address simply leaves the trailing levels blank.
+        $parts = array_map('trim', explode(',', $address));
+
+        $location = $program?->location;
+        $municipality = $location?->level === 'municipality' ? $location->name : null;
+        $province = $location?->level === 'municipality' ? $location->parent?->name : null;
+
+        $enrollment = $this->currentTreatmentEnrollment();
+
+        return [
+            'patient_address' => $address ?: null,
+            'acf_date' => $program?->scheduled_at?->toDateString(),
+            'province' => $province ?? ($parts[2] ?? null),
+            'municipality' => $municipality ?? ($parts[1] ?? null),
+            'community' => $parts[0] ?? null,
+            'registry_no' => $enrollment?->registry_number,
+            'phone' => $this->contact_number,
+        ];
     }
 }

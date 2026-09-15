@@ -2,120 +2,274 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StorePatientRecordRequest;
 use App\Models\Patient;
 use App\Models\Program;
-use App\Support\ActivityLogger;
-use Illuminate\Http\RedirectResponse;
+use App\Models\TreatmentEnrollment;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RhuController extends Controller
 {
-    public function dashboard(): Response
+    /**
+     * The RHU dashboard: the two headline counts, the two progress rings
+     * (Patient Tracker and Treatment Monitoring), and the recent-activity
+     * strip from the medjofinal-rhu-provider-portals reference.
+     *
+     * Every section is deferred so the shell paints straight away — same
+     * pattern the provider dashboard already uses — and every figure is
+     * computed live from `patients`/`treatment_enrollments`/`activities`,
+     * scoped to the account's municipality; nothing here is sampled.
+     */
+    public function dashboard(Request $request): Response
     {
+        $rhu = $request->user();
+
         return Inertia::render('Rhu/Dashboard', [
-            'user' => auth()->user(),
-            'stats' => [],
+            'municipality' => $rhu->location?->name,
+
+            'stats' => Inertia::defer(function () use ($rhu) {
+                $patients = Patient::query()
+                    ->whereHas('program', fn ($q) => $q->where('location_id', $rhu->location_id))
+                    ->with('diagnosticAssessment')
+                    ->get();
+
+                return [
+                    // "Awaiting diagnostic confirmation": flagged presumptive
+                    // during screening, with no diagnostic result recorded yet.
+                    'presumptive_patients' => $patients
+                        ->filter(fn (Patient $p) => $p->isPresumptive() && $p->diagnosticAssessment === null)
+                        ->count(),
+                    'active_cases' => $this->rhuEnrollments($rhu)->whereNull('outcome')->count(),
+                ];
+            }),
+
+            // The same two steps the Patient Tracker itself counts, counted
+            // the same way: sputum per patient, diagnostic per required test.
+            'tracker_progress' => Inertia::defer(function () use ($rhu) {
+                $patients = Patient::query()
+                    ->whereHas('program', fn ($q) => $q->where('location_id', $rhu->location_id))
+                    ->with(['sputumCollection', 'diagnosticAssessment'])
+                    ->get();
+
+                return [
+                    'total' => $patients->count(),
+                    'collected' => $patients->filter(fn (Patient $p) => (bool) $p->sputumCollection?->collected)->count(),
+                    'tests_completed' => $patients->filter(
+                        fn (Patient $p) => (bool) $p->diagnosticAssessment?->tested_with_gxpert
+                            || (bool) $p->diagnosticAssessment?->tested_with_dssm,
+                    )->count(),
+                    // One test (GXpert or DSSM) per patient.
+                    'tests_total' => $patients->count(),
+                ];
+            }),
+
+            // Across every open case: how many of the treatment months
+            // already due (per TreatmentEnrollment::currentMonth()) have
+            // actually been recorded complete.
+            'monitoring_progress' => Inertia::defer(function () use ($rhu) {
+                $enrollments = $this->rhuEnrollments($rhu)
+                    ->whereNull('outcome')
+                    ->with('treatmentMonitoringRecords.medicationDispensingRecords')
+                    ->get();
+
+                $due = $enrollments->sum(fn (TreatmentEnrollment $e) => $e->currentMonth() ?? 0);
+                $completed = $enrollments->sum(function (TreatmentEnrollment $e) {
+                    $current = $e->currentMonth();
+
+                    if ($current === null) {
+                        return 0;
+                    }
+
+                    return $e->allMonthsComplete() ? $current : $current - 1;
+                });
+
+                return [
+                    'total' => $due,
+                    'completed' => $completed,
+                    'cases' => $enrollments->count(),
+                ];
+            }),
+
+            'recent_activities' => Inertia::defer(fn () => $rhu->activities()
+                ->latest()
+                ->take(5)
+                ->get()
+                ->map(fn ($activity) => [
+                    'id' => $activity->id,
+                    'title' => $activity->title,
+                    'tag' => self::activityTag($activity->type),
+                    'datetime_label' => $activity->created_at->clone()->setTimezone('Asia/Manila')->format('M j, Y – g:i A'),
+                    'time_label' => $activity->created_at->clone()->setTimezone('Asia/Manila')->format('g:i A'),
+                ])),
         ]);
     }
 
-    public function programs(Request $request): Response
+    private function rhuEnrollments(User $rhu)
+    {
+        return TreatmentEnrollment::query()
+            ->whereHas('patient.program', fn ($q) => $q->where('location_id', $rhu->location_id));
+    }
+
+    /**
+     * Short uppercase module tag beside a dashboard activity row. Display
+     * only — mirrors the provider dashboard's tagger, extended with the
+     * RHU's own action types.
+     */
+    private static function activityTag(string $type): string
+    {
+        return match (true) {
+            str_starts_with($type, 'treatment.') => 'TREATMENT',
+            str_starts_with($type, 'diagnostic') => 'PATIENT TRACKER',
+            str_starts_with($type, 'sputum_collection') => 'PATIENT TRACKER',
+            $type === 'program.patient_notified' => 'SMS LOG',
+            str_starts_with($type, 'program.') => 'PROGRAM',
+            str_starts_with($type, 'message.') => 'INBOX',
+            str_starts_with($type, 'account.') => 'ACCOUNT',
+            str_starts_with($type, 'security.') => 'SECURITY',
+            str_starts_with($type, 'profile.') => 'PROFILE',
+            default => 'ACTIVITY',
+        };
+    }
+
+    /**
+     * Patient Tracker: Sputum Collection (read-only here — ICM-owned, see
+     * SputumCollectionController) and Diagnostic Assessment (the RHU's own,
+     * saved patient-by-patient through DiagnosticAssessmentController).
+     */
+    public function patientTracker(Request $request): Response
     {
         $rhu = $request->user();
 
-        $programs = Program::query()
-            ->where('location_id', $rhu->location_id)
-            ->withCount([
-                'patients as form_entries_count',
-                'patients as completed_entries_count' => fn ($query) => $query->where('status', 'completed'),
-                'patients as sputum_entries_count' => fn ($query) => $query->where('form_type', 'sputum_collection'),
-                'patients as contact_tracing_entries_count' => fn ($query) => $query->where('form_type', 'contact_tracing'),
-            ])
-            ->orderBy('scheduled_at')
-            ->get()
-            ->map(fn (Program $program) => [
-                'id' => $program->id,
-                'name' => $program->name,
-                'location' => $program->location,
-                'status' => $program->status,
-                'date_label' => $program->scheduled_at->format('M j, Y'),
-                'time_label' => $program->scheduled_at->format('g:i A'),
-                'form_entries_count' => $program->form_entries_count,
-                'completed_entries_count' => $program->completed_entries_count,
-                'sputum_entries_count' => $program->sputum_entries_count,
-                'contact_tracing_entries_count' => $program->contact_tracing_entries_count,
-            ]);
-
-        return Inertia::render('Rhu/Programs/Index', [
-            'programs' => $programs,
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'program' => ['nullable', 'integer'],
+            'tab' => ['nullable', Rule::in(['sputum', 'diagnostic'])],
         ]);
-    }
 
-    public function showProgram(Request $request, Program $program): Response
-    {
-        abort_unless($program->location_id === $request->user()->location_id, 403);
+        $search = trim($filters['search'] ?? '');
 
-        $entries = $program->patients()
-            ->orderByDesc('updated_at')
-            ->get()
-            ->map(fn (Patient $patient) => [
-                'id' => $patient->id,
-                'form_type' => $patient->form_type,
-                'patient_id' => $patient->patient_code,
-                'patient_name' => $patient->name,
-                'contact_number' => $patient->contact_number,
-                'status' => $patient->status,
-                'updated_at_label' => $patient->updated_at->diffForHumans(),
-            ]);
+        // The program filter is itself authorized: an id outside the RHU's
+        // catchment is dropped rather than applied, so it cannot be used to
+        // pull another municipality's roster.
+        $programs = Program::where('location_id', $rhu->location_id)
+            ->orderByDesc('scheduled_at')
+            ->get(['id', 'name', 'scheduled_at']);
 
-        return Inertia::render('Rhu/Programs/Show', [
-            'program' => [
+        $programId = $filters['program'] ?? null;
+        if ($programId !== null && ! $programs->contains('id', $programId)) {
+            $programId = null;
+        }
+
+        $scoped = Patient::query()
+            ->whereHas('program', fn ($query) => $query->where('location_id', $rhu->location_id));
+
+        $patients = (clone $scoped)
+            ->with(['sputumCollection', 'diagnosticAssessment', 'treatmentEnrollments'])
+            ->when($programId !== null, fn ($query) => $query->where('program_id', $programId))
+            ->when($search !== '', function ($query) use ($search) {
+                $escaped = addcslashes($search, '%_\\');
+
+                $query->where(fn ($scoped) => $scoped
+                    ->where('name', 'like', '%'.$escaped.'%')
+                    ->orWhere('patient_code', 'like', '%'.$escaped.'%')
+                    ->orWhere('contact_number', 'like', '%'.$escaped.'%'));
+            })
+            ->orderBy('name')
+            ->get();
+
+        // Progress is counted over the whole catchment, not the filtered
+        // view, so searching/filtering does not make the module look less
+        // finished.
+        $all = (clone $scoped)->with(['sputumCollection', 'diagnosticAssessment'])->get();
+
+        return Inertia::render('Rhu/PatientTracker/Index', [
+            'patients' => $patients->values()->map(
+                fn (Patient $patient, int $index) => $this->mapTrackerPatient($patient, $index + 1),
+            ),
+            'programs' => $programs->map(fn (Program $program) => [
                 'id' => $program->id,
                 'name' => $program->name,
-                'location' => $program->location,
-                'status' => $program->status,
-                'date_label' => $program->scheduled_at->format('M j, Y'),
-                'time_label' => $program->scheduled_at->format('g:i A'),
-                'form_entries' => $entries,
+                'date_label' => $program->scheduled_at->clone()->setTimezone('Asia/Manila')->format('M j, Y'),
+            ]),
+            'filters' => [
+                'search' => $search,
+                'program' => $programId,
+                'tab' => $filters['tab'] ?? 'sputum',
             ],
+            // A patient is done with testing once either GXpert or DSSM is
+            // recorded — never both are required.
+            'progress' => [
+                'total' => $all->count(),
+                'collected' => $all->filter(fn (Patient $p) => (bool) $p->sputumCollection?->collected)->count(),
+                'tests_completed' => $all->filter(
+                    fn (Patient $p) => (bool) $p->diagnosticAssessment?->tested_with_gxpert
+                        || (bool) $p->diagnosticAssessment?->tested_with_dssm,
+                )->count(),
+                'tests_total' => $all->count(),
+            ],
+            'municipality' => $rhu->location?->name,
         ]);
     }
 
-    public function storeForm(StorePatientRecordRequest $request, Program $program): RedirectResponse
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapTrackerPatient(Patient $patient, int $number): array
     {
-        $rhu = $request->user();
+        $sputum = $patient->sputumCollection;
+        $diagnostic = $patient->diagnosticAssessment;
 
-        abort_unless($program->location_id === $rhu->location_id, 403);
+        return [
+            'id' => $patient->id,
+            'number' => $number,
+            'name' => $patient->name,
+            'contact_number' => $patient->contact_number,
+            'address' => $patient->address,
 
-        $patient = DB::transaction(function () use ($rhu, $request, $program): Patient {
-            $patient = $program->patients()->create([
-                'created_by' => $rhu->id,
-                'form_type' => $request->validated('form_type'),
-                'patient_code' => $request->validated('patient_id'),
-                'name' => $request->validated('patient_name'),
-                'date_of_birth' => $request->validated('date_of_birth'),
-                'sex' => $request->validated('sex'),
-                'contact_number' => $request->validated('contact_number'),
-                'address' => $request->validated('address'),
-                'status' => $request->validated('status'),
-                'responses' => $request->validated('responses'),
-            ]);
+            // ICM-owned — this screen only displays it.
+            'sputum_collected' => match ($sputum?->collected) {
+                true => '1',
+                false => '0',
+                default => '',
+            },
+            'not_collected_reason' => $sputum?->not_collected_reason,
+            'icm_remarks' => $sputum?->remarks,
 
-            ActivityLogger::record(
-                $rhu,
-                'program.patient_recorded',
-                'Added patient record',
-                "{$patient->name} was recorded under {$program->name}.",
-                ['program_id' => $program->id, 'patient_id' => $patient->id],
-                $patient,
-            );
+            // RHU-owned — editable through the Diagnostic Assessment tab.
+            'tested_with_gxpert' => (bool) $diagnostic?->tested_with_gxpert,
+            'tested_with_dssm' => (bool) $diagnostic?->tested_with_dssm,
+            'result_dssm' => (bool) $diagnostic?->result_dssm,
+            'result_rr' => (bool) $diagnostic?->result_rr,
+            'result_t' => (bool) $diagnostic?->result_t,
+            'result_tt' => (bool) $diagnostic?->result_tt,
+            'result_ti' => (bool) $diagnostic?->result_ti,
+            'result_negative' => (bool) $diagnostic?->result_negative,
+            'tb_diagnosis' => $diagnostic?->tb_diagnosis,
+            'diagnostic_remarks' => $diagnostic?->remarks,
 
-            return $patient;
-        });
+            // Derived from the treatment register, never typed.
+            'treatment_status' => $this->treatmentStatusFor($patient),
+        ];
+    }
 
-        return back()->with('success', "Record for {$patient->name} was saved.");
+    /**
+     * @return array{tone: string, label: string}
+     */
+    private function treatmentStatusFor(Patient $patient): array
+    {
+        $enrollment = $patient->currentTreatmentEnrollment();
+
+        if ($enrollment === null) {
+            return ['tone' => 'not_enrolled', 'label' => 'Not yet Enrolled'];
+        }
+
+        if ($enrollment->isOnTreatment()) {
+            return ['tone' => 'enrolled', 'label' => 'On Treatment'];
+        }
+
+        return ['tone' => 'closed', 'label' => ucwords(str_replace('_', ' ', $enrollment->outcome))];
     }
 }

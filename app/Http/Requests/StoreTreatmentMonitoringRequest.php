@@ -7,7 +7,6 @@ use App\Models\User;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreTreatmentMonitoringRequest extends FormRequest
 {
@@ -30,12 +29,14 @@ class StoreTreatmentMonitoringRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // No uniqueness rule — a resubmit for the current month is a
+            // valid "Edit Review" upsert, not a duplicate. The controller's
+            // own locking guards (current-month-only) are the real
+            // protection against overwriting a completed month.
             'month_number' => [
                 'required',
                 'integer',
                 'min:1',
-                Rule::unique('treatment_monitoring_records', 'month_number')
-                    ->where('treatment_enrollment_id', $this->route('treatmentEnrollment')?->id),
                 function (string $attribute, mixed $value, Closure $fail): void {
                     /** @var TreatmentEnrollment $enrollment */
                     $enrollment = $this->route('treatmentEnrollment');

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Patient;
+use App\Models\TreatmentEnrollment;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -35,26 +36,8 @@ class StoreTreatmentEnrollmentRequest extends FormRequest
             'registration_date' => ['required', 'date', 'before_or_equal:today'],
             'treatment_start_date' => ['required', 'date', 'after_or_equal:registration_date'],
             'baseline_weight' => ['nullable', 'numeric', 'min:0', 'max:999.9'],
-            'registration_group' => [
-                'required',
-                Rule::in([
-                    'new',
-                    'relapse',
-                    'treatment_after_failure',
-                    'treatment_after_loss_to_follow_up',
-                    'transfer_in',
-                ]),
-            ],
-            'treatment_regimen' => [
-                'required',
-                Rule::in([
-                    'category_1_new',
-                    'category_2_retreatment',
-                    'category_3_new_ep',
-                    'category_4_retreatment_ep',
-                    'drug_resistant',
-                ]),
-            ],
+            'registration_group' => ['required', Rule::in(TreatmentEnrollment::REGISTRATION_GROUPS)],
+            'treatment_regimen' => ['required', Rule::in(TreatmentEnrollment::TREATMENT_REGIMENS)],
         ];
     }
 }

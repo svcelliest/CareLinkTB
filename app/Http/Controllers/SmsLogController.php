@@ -11,15 +11,23 @@ use App\Support\UniSmsClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
+use Inertia\Response;
 
+/**
+ * The page (index) renders through Inertia like the rest of the app; the
+ * send action (store) stays a plain JSON endpoint (see the RHU treatment
+ * pages) so a validation failure doesn't trigger a full Inertia page swap
+ * on a form embedded in a page that's also live-polling.
+ */
 class SmsLogController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): Response
     {
         $rhu = $request->user();
         abort_unless($rhu instanceof User && $rhu->role === 'rhu', 403);
 
-        $logs = SmsLog::query()
+        $history = SmsLog::query()
             ->with(['patient', 'bhw', 'sender'])
             ->where(function ($query) use ($rhu) {
                 $query->whereHas(
@@ -49,17 +57,30 @@ class SmsLogController extends Controller
             ->whereHas('program', fn ($q) => $q->where('location_id', $rhu->location_id))
             ->whereHas('treatmentEnrollments')
             ->orderBy('name')
-            ->get(['id', 'name', 'contact_number']);
+            ->get(['id', 'name', 'contact_number'])
+            ->map(fn (Patient $patient) => [
+                'id' => $patient->id,
+                'type' => 'patient',
+                'name' => $patient->name,
+                'contact_number' => $patient->contact_number,
+            ]);
 
         $bhws = Bhw::query()
             ->where('location_id', $rhu->location_id)
             ->orderBy('name')
-            ->get(['id', 'name', 'contact_number']);
+            ->get(['id', 'name', 'contact_number', 'address'])
+            ->map(fn (Bhw $bhw) => [
+                'id' => $bhw->id,
+                'type' => 'bhw',
+                'name' => $bhw->name,
+                'contact_number' => $bhw->contact_number,
+                'address' => $bhw->address,
+            ]);
 
-        return response()->json([
-            'logs' => $logs,
-            'patients' => $patients,
-            'bhws' => $bhws,
+        return Inertia::render('Rhu/SmsLog/Index', [
+            'municipality' => $rhu->location?->name,
+            'recipients' => $patients->concat($bhws)->values(),
+            'history' => $history,
         ]);
     }
 

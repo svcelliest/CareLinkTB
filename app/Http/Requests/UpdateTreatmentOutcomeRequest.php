@@ -30,17 +30,7 @@ class UpdateTreatmentOutcomeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'outcome' => [
-                'required',
-                Rule::in([
-                    'cured',
-                    'treatment_completed',
-                    'treatment_failed',
-                    'died',
-                    'lost_to_follow_up',
-                    'not_evaluated',
-                ]),
-            ],
+            'outcome' => ['required', Rule::in(TreatmentEnrollment::OUTCOMES)],
             'outcome_date' => [
                 'required',
                 'date',

@@ -20,18 +20,36 @@ return new class extends Migration
         // Real WHO/IUATLD AFB smear grading scale, per the actual RHU
         // mockup's "Smear Result" dropdown — not the simplified
         // negative/positive/not_done placeholder from the prior migration.
-        DB::statement("
-            ALTER TABLE follow_up_exams
-            MODIFY result ENUM('negative', 'scanty', '1+', '2+', '3+') NOT NULL
-        ");
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            Schema::table('follow_up_exams', function (Blueprint $table) {
+                $table->dropColumn('result');
+            });
+            Schema::table('follow_up_exams', function (Blueprint $table) {
+                $table->enum('result', ['negative', 'scanty', '1+', '2+', '3+']);
+            });
+        } else {
+            DB::statement("
+                ALTER TABLE follow_up_exams
+                MODIFY result ENUM('negative', 'scanty', '1+', '2+', '3+') NOT NULL
+            ");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("
-            ALTER TABLE follow_up_exams
-            MODIFY result ENUM('negative', 'scanty', '1+', '2+', '3+') NULL
-        ");
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            Schema::table('follow_up_exams', function (Blueprint $table) {
+                $table->dropColumn('result');
+            });
+            Schema::table('follow_up_exams', function (Blueprint $table) {
+                $table->enum('result', ['negative', 'scanty', '1+', '2+', '3+'])->nullable();
+            });
+        } else {
+            DB::statement("
+                ALTER TABLE follow_up_exams
+                MODIFY result ENUM('negative', 'scanty', '1+', '2+', '3+') NULL
+            ");
+        }
 
         Schema::table('follow_up_exams', function (Blueprint $table) {
             $table->dropColumn('result_date');

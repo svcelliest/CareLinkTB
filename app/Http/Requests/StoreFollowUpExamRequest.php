@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\FollowUpExam;
 use App\Models\TreatmentEnrollment;
 use App\Models\User;
 use Closure;
@@ -45,9 +46,11 @@ class StoreFollowUpExamRequest extends FormRequest
                     }
                 },
             ],
+            'collected' => ['nullable', 'boolean'],
             'collection_date' => ['required', 'date', 'before_or_equal:today'],
             'result_date' => ['required', 'date', 'after_or_equal:collection_date', 'before_or_equal:today'],
-            'result' => ['required', Rule::in(['negative', 'scanty', '1+', '2+', '3+'])],
+            'result' => ['required', Rule::in(FollowUpExam::RESULTS)],
+            'afb_count' => ['nullable', 'string', 'max:60'],
             'remarks' => ['nullable', 'string'],
         ];
     }
