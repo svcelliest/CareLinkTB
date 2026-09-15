@@ -24,6 +24,7 @@ class ContactTracingController extends Controller
 
         return response()->json([
             'contact_tracing' => $patient->contactTracingRecord,
+            'acf_defaults' => $patient->acfDefaults(),
         ]);
     }
 

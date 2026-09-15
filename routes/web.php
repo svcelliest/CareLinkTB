@@ -8,6 +8,7 @@ use App\Http\Controllers\DiagnosticAssessmentController;
 use App\Http\Controllers\FollowUpExamController;
 use App\Http\Controllers\IcmAccountController;
 use App\Http\Controllers\IcmArchiveController;
+use App\Http\Controllers\IcmContactTracingController;
 use App\Http\Controllers\IcmController;
 use App\Http\Controllers\MedicationDispensingController;
 use App\Http\Controllers\MessageController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\RhuController;
+use App\Http\Controllers\RhuTreatmentController;
 use App\Http\Controllers\SmsLogController;
 use App\Http\Controllers\SputumCollectionController;
 use App\Http\Controllers\TreatmentEnrollmentController;
@@ -61,13 +63,15 @@ Route::middleware(['auth', 'active', 'role:icm'])->group(function () {
         ->name('icm.patients.sputum-collection.store');
     Route::get('icm/patients/{patient}/diagnostic-assessment', [DiagnosticAssessmentController::class, 'show'])
         ->name('icm.patients.diagnostic-assessment.show');
+    Route::get('icm/contact-tracing', [IcmContactTracingController::class, 'index'])
+        ->name('icm.contact-tracing.index');
+    Route::get('icm/contact-tracing/{case}', [IcmContactTracingController::class, 'show'])
+        ->name('icm.contact-tracing.show');
 });
 
 Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
     Route::get('rhu/dashboard', [RhuController::class, 'dashboard'])->name('rhu.dashboard');
-    Route::get('rhu/programs', [RhuController::class, 'programs'])->name('rhu.programs.index');
-    Route::get('rhu/programs/{program}', [RhuController::class, 'showProgram'])->name('rhu.programs.show');
-    Route::post('rhu/programs/{program}/forms', [RhuController::class, 'storeForm'])->name('rhu.programs.forms.store');
+    Route::get('rhu/patient-tracker', [RhuController::class, 'patientTracker'])->name('rhu.tracker.index');
     Route::get('rhu/patients/{patient}/enroll', [TreatmentEnrollmentController::class, 'create'])
         ->name('rhu.patients.enroll.create');
     Route::post('rhu/patients/{patient}/enroll', [TreatmentEnrollmentController::class, 'store'])
@@ -103,6 +107,27 @@ Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
     Route::post('rhu/sms-logs', [SmsLogController::class, 'store'])->name('rhu.sms-logs.store');
     Route::get('rhu/inbox', [MessageController::class, 'index'])->name('rhu.inbox');
     Route::get('rhu/activity', [ActivityController::class, 'index'])->name('rhu.activity');
+    // Bridging routes for the medjofinal-rhu-provider-portals frontend —
+    // param named {case} to match its route()/Link usage, bound to
+    // TreatmentEnrollment. See RhuTreatmentController.
+    Route::get('rhu/patient-monitoring', [RhuTreatmentController::class, 'index'])
+        ->name('rhu.treatment.index');
+    Route::post('rhu/patient-monitoring', [RhuTreatmentController::class, 'store'])
+        ->name('rhu.treatment.store');
+    Route::get('rhu/patient-monitoring/{case}', [RhuTreatmentController::class, 'show'])
+        ->name('rhu.treatment.show');
+    Route::patch('rhu/patient-monitoring/{case}/monitoring', [RhuTreatmentController::class, 'updateMonitoring'])
+        ->name('rhu.treatment.monitoring.update');
+    Route::post('rhu/patient-monitoring/{case}/dispensing', [RhuTreatmentController::class, 'storeDispensing'])
+        ->name('rhu.treatment.dispensing.store');
+    Route::patch('rhu/patient-monitoring/{case}/dispensing/{record}', [RhuTreatmentController::class, 'storeDispensing'])
+        ->name('rhu.treatment.dispensing.update');
+    Route::patch('rhu/patient-monitoring/{case}/followups/{month}', [RhuTreatmentController::class, 'updateFollowup'])
+        ->name('rhu.treatment.followups.update');
+    Route::put('rhu/patient-monitoring/{case}/contact-tracing', [RhuTreatmentController::class, 'saveContactTracing'])
+        ->name('rhu.treatment.contact-tracing.save');
+    Route::patch('rhu/patient-monitoring/{case}/outcome', [RhuTreatmentController::class, 'updateOutcome'])
+        ->name('rhu.treatment.outcome.update');
     Route::get('rhu/patients/{patient}/diagnostic-assessment', [DiagnosticAssessmentController::class, 'show'])
         ->name('rhu.patients.diagnostic-assessment.show');
     Route::post('rhu/patients/{patient}/diagnostic-assessment', [DiagnosticAssessmentController::class, 'store'])

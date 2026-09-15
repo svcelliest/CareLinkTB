@@ -13,6 +13,18 @@ class Program extends Model
 {
     use HasFactory;
 
+    /**
+     * Programs are field activities staffed by RHU and provider teams, so
+     * they may only be scheduled inside this working window. `scheduled_at`
+     * holds the wall-clock time the coordinator picked (see
+     * StoreProgramRequest::programAttributes()), so these bounds compare
+     * directly against the `H:i` value from the form — see
+     * App\Rules\WithinProgramHours.
+     */
+    public const EARLIEST_MINUTES = 8 * 60;   // 08:00
+
+    public const LATEST_MINUTES = 17 * 60;    // 17:00
+
     protected $fillable = [
         'created_by',
         'name',
@@ -69,5 +81,35 @@ class Program extends Model
     public function patients(): HasMany
     {
         return $this->hasMany(Patient::class);
+    }
+
+    public static function earliestTimeLabel(): string
+    {
+        return self::minutesToLabel(self::EARLIEST_MINUTES);
+    }
+
+    public static function latestTimeLabel(): string
+    {
+        return self::minutesToLabel(self::LATEST_MINUTES);
+    }
+
+    /** The `HH:MM` bounds the browser's time input is clamped to. */
+    public static function earliestTimeValue(): string
+    {
+        return sprintf('%02d:%02d', intdiv(self::EARLIEST_MINUTES, 60), self::EARLIEST_MINUTES % 60);
+    }
+
+    public static function latestTimeValue(): string
+    {
+        return sprintf('%02d:%02d', intdiv(self::LATEST_MINUTES, 60), self::LATEST_MINUTES % 60);
+    }
+
+    private static function minutesToLabel(int $minutes): string
+    {
+        $hour = intdiv($minutes, 60);
+        $meridiem = $hour >= 12 ? 'PM' : 'AM';
+        $displayHour = $hour % 12 === 0 ? 12 : $hour % 12;
+
+        return sprintf('%d:%02d %s', $displayHour, $minutes % 60, $meridiem);
     }
 }

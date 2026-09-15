@@ -1,17 +1,25 @@
-import { Link, router, useForm, usePage } from "@inertiajs/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, router } from "@inertiajs/react";
+import { useMemo, useState } from "react";
 import {
     FaBoxArchive,
     FaCalendarDays,
     FaChevronRight,
-    FaCircleCheck,
     FaLocationDot,
-    FaMagnifyingGlass,
     FaPlus,
-    FaUser,
-    FaXmark,
 } from "react-icons/fa6";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import ArchiveProgramDialog from "@/Components/program/ArchiveProgramDialog";
+import { useToast } from "@/Components/ui/Toast";
+import ProgramFormDialog from "@/Components/program/ProgramFormDialog";
+import {
+    Button,
+    Card,
+    EmptyState,
+    PageToolbar,
+    SearchInput,
+    StatusPill,
+    cx,
+} from "@/Components/ui";
 
 const filters = [
     { value: "all", label: "All" },
@@ -26,27 +34,13 @@ const statusLabels = {
     completed: "Completed",
 };
 
-export default function Index({ programs, locations }) {
-    const { flash } = usePage().props;
+export default function Index({ programs, locations, scheduleWindow }) {
+    const toast = useToast();
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("all");
-    const [modalOpen, setModalOpen] = useState(false);
-    const nameInput = useRef(null);
-    const {
-        data,
-        setData,
-        post,
-        processing,
-        errors,
-        clearErrors,
-        reset,
-        transform,
-    } = useForm({
-        name: "",
-        location_id: "",
-        date: "",
-        time: "",
-    });
+    const [createOpen, setCreateOpen] = useState(false);
+    const [archiveTarget, setArchiveTarget] = useState(null);
+    const [archiving, setArchiving] = useState(false);
 
     const filteredPrograms = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -62,83 +56,30 @@ export default function Index({ programs, locations }) {
         });
     }, [programs, search, status]);
 
-    useEffect(() => {
-        if (!modalOpen) return undefined;
+    const openCreate = () => setCreateOpen(true);
 
-        const previousOverflow = document.body.style.overflow;
-        const handleKeyDown = (event) => {
-            if (event.key === "Escape" && !processing) {
-                clearErrors();
-                setModalOpen(false);
-            }
-        };
-
-        document.body.style.overflow = "hidden";
-        window.addEventListener("keydown", handleKeyDown);
-        window.setTimeout(() => nameInput.current?.focus(), 0);
-
-        return () => {
-            document.body.style.overflow = previousOverflow;
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [clearErrors, modalOpen, processing]);
-
-    const openModal = () => {
-        clearErrors();
-        setModalOpen(true);
-    };
-
-    const closeModal = () => {
-        if (processing) return;
-        clearErrors();
-        setModalOpen(false);
-    };
-
-    const submit = (event) => {
-        event.preventDefault();
-
-        transform(({ name, location_id, date, time }) => {
-            const localDate = new Date(`${date}T${time || "00:00"}`);
-            return {
-                name,
-                location_id,
-                scheduled_at: Number.isNaN(localDate.getTime())
-                    ? `${date}T${time || "00:00"}`
-                    : localDate.toISOString(),
-            };
-        });
-
-        post(route("icm.programs.store"), {
-            preserveScroll: true,
-            onSuccess: () => {
-                reset();
-                setModalOpen(false);
-            },
-        });
-    };
-
-    const formatSchedule = (isoString) => {
-        const date = new Date(isoString);
-        if (Number.isNaN(date.getTime())) return "";
-        return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-    };
-
-    const archiveProgram = (event, program) => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (
-            !window.confirm(
-                `Archive "${program.name}"? It will move to the Archives page.`,
-            )
-        ) {
-            return;
-        }
-
+    // Archiving files a finished program away rather than deleting it, so it
+    // only moves to the Archives page, where it can be restored. The dialog
+    // handles both answers: confirm for a completed program, and the reason it
+    // cannot be archived yet for one that is still upcoming or active.
+    const confirmArchive = () => {
         router.patch(
-            route("icm.programs.archive", program.id),
+            route("icm.programs.archive", archiveTarget.id),
             {},
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onStart: () => setArchiving(true),
+                onSuccess: () => toast.success("Program archived successfully"),
+                onError: () =>
+                    toast.error(
+                        "Could not archive the program. Please try again.",
+                    ),
+                onFinish: () => {
+                    setArchiving(false);
+                    setArchiveTarget(null);
+                },
+            },
         );
     };
 
@@ -148,42 +89,27 @@ export default function Index({ programs, locations }) {
             title="Programs"
             contentClassName="dash-content-programs"
         >
-            <section className="programs-page" aria-labelledby="programs-title">
-                <h2 id="programs-title" className="sr-only">
-                    Programs
-                </h2>
+            <section className="flex h-full flex-col bg-shell font-ui">
+                <h2 className="sr-only">Programs</h2>
 
-                {flash?.success && (
-                    <div className="programs-toast" role="status">
-                        <FaCircleCheck />
-                        <span>{flash.success}</span>
+                <PageToolbar>
+                    <SearchInput
+                        id="program-search"
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search programs..."
+                        label="Search programs"
+                    />
+                    <div className="ml-auto flex items-center gap-2.5">
+                        <Button onClick={openCreate}>
+                            <FaPlus className="size-4" aria-hidden="true" />
+                            Create Program
+                        </Button>
                     </div>
-                )}
-
-                <div className="programs-toolbar">
-                    <label className="programs-search">
-                        <FaMagnifyingGlass aria-hidden="true" />
-                        <span className="sr-only">Search programs</span>
-                        <input
-                            type="search"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Search programs..."
-                        />
-                    </label>
-
-                    <button
-                        type="button"
-                        className="programs-create-button"
-                        onClick={openModal}
-                    >
-                        <FaPlus aria-hidden="true" />
-                        Create Program
-                    </button>
-                </div>
+                </PageToolbar>
 
                 <div
-                    className="programs-tabs"
+                    className="flex shrink-0 gap-1 border-b border-line bg-white px-6 pt-3"
                     role="tablist"
                     aria-label="Program status"
                 >
@@ -193,281 +119,152 @@ export default function Index({ programs, locations }) {
                             type="button"
                             role="tab"
                             aria-selected={status === filter.value}
-                            className={`programs-tab ${status === filter.value ? "active" : ""}`}
                             onClick={() => setStatus(filter.value)}
+                            className={cx(
+                                "rounded-t-lg border-[1.5px] border-b-0 px-[18px] py-2.5 text-[13px] font-semibold transition-colors",
+                                status === filter.value
+                                    ? "border-line bg-white text-brand"
+                                    : "border-transparent bg-shell text-muted hover:text-ink",
+                            )}
                         >
                             {filter.label}
                         </button>
                     ))}
                 </div>
 
-                <div className="programs-list" aria-live="polite">
+                <div
+                    className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-5"
+                    aria-live="polite"
+                >
                     {filteredPrograms.length > 0 ? (
                         filteredPrograms.map((program) => (
-                            <div
+                            <Card
                                 key={program.id}
-                                className={`programs-card ${program.status === "active" ? "is-active" : ""}`}
+                                className={cx(
+                                    "border-[1.5px] transition-shadow hover:shadow-[0_4px_18px_rgba(0,0,0,0.1)]",
+                                    program.status === "active"
+                                        ? "border-[#fde8e8]"
+                                        : "border-transparent hover:border-line-soft",
+                                )}
                             >
-                                <Link
-                                    href={route(
-                                        "icm.programs.show",
-                                        program.id,
-                                    )}
-                                    className="programs-card-link"
-                                >
-                                    <div className="programs-card-main">
-                                        <div className="programs-card-copy">
-                                            <div className="programs-card-title-row">
-                                                <h3>{program.name}</h3>
-                                                <span
-                                                    className={`programs-status programs-status-${program.status}`}
-                                                >
-                                                    {statusLabels[
-                                                        program.status
-                                                    ] ?? program.status}
-                                                </span>
-                                            </div>
-                                            <p className="programs-location">
-                                                <FaLocationDot aria-hidden="true" />
-                                                <span>{program.location}</span>
-                                            </p>
-                                        </div>
-
-                                        <div className="programs-card-meta">
-                                            <span>
-                                                <FaCalendarDays aria-hidden="true" />
-                                                {formatSchedule(
-                                                    program.scheduled_at,
+                                <div className="flex flex-wrap items-center gap-4 px-[22px] py-[18px]">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
+                                            <Link
+                                                href={route(
+                                                    "icm.programs.show",
+                                                    program.id,
                                                 )}
-                                            </span>
-                                            <span>
-                                                <FaUser aria-hidden="true" />
-                                                {program.patients_count}{" "}
-                                                {program.patients_count === 1
-                                                    ? "patient"
-                                                    : "patients"}
-                                            </span>
+                                                className={cx(
+                                                    "text-sm font-bold hover:underline",
+                                                    program.status === "active"
+                                                        ? "text-brand"
+                                                        : "text-ink",
+                                                )}
+                                            >
+                                                {program.name}
+                                            </Link>
+                                            <StatusPill tone={program.status}>
+                                                {statusLabels[program.status] ??
+                                                    program.status}
+                                            </StatusPill>
                                         </div>
-
-                                        <FaChevronRight
-                                            className="programs-card-arrow"
-                                            aria-hidden="true"
-                                        />
+                                        <p className="flex items-center gap-1.5 text-xs text-muted">
+                                            <FaLocationDot
+                                                className="size-3"
+                                                aria-hidden="true"
+                                            />
+                                            <span>{program.location}</span>
+                                        </p>
                                     </div>
-                                </Link>
 
-                                {program.status === "completed" && (
-                                    <div className="programs-card-footer">
+                                    <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2">
+                                        <span className="flex items-center gap-1.5 text-[12.5px] text-muted">
+                                            <FaCalendarDays
+                                                className="size-3.5"
+                                                aria-hidden="true"
+                                            />
+                                            {program.date_label}{" "}
+                                            {program.time_label}
+                                        </span>
+
+                                        {/* Offered on every row; a program that
+                                            is not completed opens the dialog
+                                            explaining why instead of archiving. */}
                                         <button
                                             type="button"
-                                            className="programs-archive-button"
-                                            onClick={(event) =>
-                                                archiveProgram(event, program)
+                                            onClick={() =>
+                                                setArchiveTarget(program)
                                             }
+                                            aria-disabled={
+                                                program.status !== "completed"
+                                            }
+                                            aria-label={`Archive ${program.name}`}
+                                            className={cx(
+                                                "flex items-center gap-1.5 text-xs font-semibold transition-colors",
+                                                program.status === "completed"
+                                                    ? "text-muted hover:text-brand"
+                                                    : "cursor-not-allowed text-[#c9c9c9]",
+                                            )}
                                         >
-                                            <FaBoxArchive aria-hidden="true" />
+                                            <FaBoxArchive
+                                                className="size-3"
+                                                aria-hidden="true"
+                                            />
                                             Archive
                                         </button>
+
+                                        <Link
+                                            href={route(
+                                                "icm.programs.show",
+                                                program.id,
+                                            )}
+                                            aria-label={`View details for ${program.name}`}
+                                            className="flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-strong"
+                                        >
+                                            View details
+                                            <FaChevronRight className="size-3" aria-hidden="true" />
+                                        </Link>
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            </Card>
                         ))
                     ) : (
-                        <div className="programs-empty-state">
-                            <div className="programs-empty-icon">
-                                <FaCalendarDays aria-hidden="true" />
-                            </div>
-                            <h3>No programs found</h3>
-                            <p>
-                                {programs.length === 0
-                                    ? "Create your first program to begin scheduling community screening activities."
-                                    : "Try another search term or program status."}
-                            </p>
-                            {programs.length === 0 && (
-                                <button type="button" onClick={openModal}>
-                                    <FaPlus aria-hidden="true" />
-                                    Create Program
-                                </button>
-                            )}
-                        </div>
+                        <Card>
+                            <EmptyState
+                                icon={<FaCalendarDays />}
+                                title="No programs found"
+                                description={
+                                    programs.length === 0
+                                        ? "Create your first program to begin scheduling community screening activities."
+                                        : "Try another search term or program status."
+                                }
+                            >
+                                {programs.length === 0 && (
+                                    <Button className="mt-2" onClick={openCreate}>
+                                        <FaPlus className="size-4" aria-hidden="true" />
+                                        Create Program
+                                    </Button>
+                                )}
+                            </EmptyState>
+                        </Card>
                     )}
                 </div>
             </section>
 
-            {modalOpen && (
-                <div
-                    className="programs-modal-overlay"
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) closeModal();
-                    }}
-                >
-                    <div
-                        className="programs-modal"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="create-program-title"
-                        aria-describedby="create-program-description"
-                    >
-                        <button
-                            type="button"
-                            className="programs-modal-close"
-                            onClick={closeModal}
-                            aria-label="Close create program dialog"
-                            disabled={processing}
-                        >
-                            <FaXmark />
-                        </button>
+            <ProgramFormDialog
+                open={createOpen}
+                onClose={() => setCreateOpen(false)}
+                locations={locations}
+                scheduleWindow={scheduleWindow}
+            />
 
-                        <h2 id="create-program-title">Create New Program</h2>
-                        <p id="create-program-description">
-                            This program will be available for future provider
-                            assignment and monitoring.
-                        </p>
-
-                        <form onSubmit={submit} noValidate>
-                            <div className="programs-field">
-                                <label htmlFor="program-name">
-                                    Program Name
-                                </label>
-                                <input
-                                    id="program-name"
-                                    ref={nameInput}
-                                    type="text"
-                                    value={data.name}
-                                    onChange={(event) =>
-                                        setData("name", event.target.value)
-                                    }
-                                    placeholder="e.g. ACF TB Program – Kalibo"
-                                    aria-invalid={Boolean(errors.name)}
-                                    aria-describedby={
-                                        errors.name
-                                            ? "program-name-error"
-                                            : undefined
-                                    }
-                                    autoComplete="off"
-                                />
-                                {errors.name && (
-                                    <small id="program-name-error">
-                                        {errors.name}
-                                    </small>
-                                )}
-                            </div>
-
-                            <div className="programs-field">
-                                <label htmlFor="program-location">
-                                    Location
-                                </label>
-                                <select
-                                    id="program-location"
-                                    value={data.location_id}
-                                    onChange={(event) =>
-                                        setData(
-                                            "location_id",
-                                            event.target.value,
-                                        )
-                                    }
-                                    aria-invalid={Boolean(errors.location_id)}
-                                    aria-describedby={
-                                        errors.location_id
-                                            ? "program-location-error"
-                                            : undefined
-                                    }
-                                >
-                                    <option value="">
-                                        Select a municipality
-                                    </option>
-                                    {locations.map((location) => (
-                                        <option
-                                            key={location.id}
-                                            value={location.id}
-                                        >
-                                            {location.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.location_id && (
-                                    <small id="program-location-error">
-                                        {errors.location_id}
-                                    </small>
-                                )}
-                            </div>
-
-                            <div className="programs-field-row">
-                                <div className="programs-field">
-                                    <label htmlFor="program-date">Date</label>
-                                    <input
-                                        id="program-date"
-                                        type="date"
-                                        value={data.date}
-                                        onChange={(event) =>
-                                            setData("date", event.target.value)
-                                        }
-                                        aria-invalid={Boolean(errors.date)}
-                                        aria-describedby={
-                                            errors.date
-                                                ? "program-date-error"
-                                                : undefined
-                                        }
-                                    />
-                                    {errors.date && (
-                                        <small id="program-date-error">
-                                            {errors.date}
-                                        </small>
-                                    )}
-                                </div>
-
-                                <div className="programs-field">
-                                    <label htmlFor="program-time">Time</label>
-                                    <input
-                                        id="program-time"
-                                        type="time"
-                                        value={data.time}
-                                        onChange={(event) =>
-                                            setData("time", event.target.value)
-                                        }
-                                        aria-invalid={Boolean(errors.time)}
-                                        aria-describedby={
-                                            errors.time
-                                                ? "program-time-error"
-                                                : undefined
-                                        }
-                                    />
-                                    {errors.time && (
-                                        <small id="program-time-error">
-                                            {errors.time}
-                                        </small>
-                                    )}
-                                </div>
-                            </div>
-                            {errors.scheduled_at && (
-                                <small id="program-schedule-error">
-                                    {errors.scheduled_at}
-                                </small>
-                            )}
-
-                            <div className="programs-modal-actions">
-                                <button
-                                    type="button"
-                                    className="programs-cancel-button"
-                                    onClick={closeModal}
-                                    disabled={processing}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="programs-submit-button"
-                                    disabled={processing}
-                                >
-                                    {processing
-                                        ? "Creating..."
-                                        : "Create Program"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <ArchiveProgramDialog
+                program={archiveTarget}
+                processing={archiving}
+                onConfirm={confirmArchive}
+                onClose={() => setArchiveTarget(null)}
+            />
         </DashboardLayout>
     );
 }

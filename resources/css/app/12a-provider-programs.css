@@ -1,0 +1,5 @@
+/* Flowbite lays the footer out for two buttons at half width each. Only Clear
+   is enabled here, so let it span. */
+.field-datefield .datepicker-footer .clear-btn {
+    width: 100%;
+}

@@ -1,0 +1,987 @@
+/*
+ * CareLink TB landing page styles.
+ *
+ * Converted verbatim from the original landing page's stylesheet. Three
+ * deliberate changes were made during the port:
+ *
+ *   1. The Google Fonts @import was dropped — resources/views/app.blade.php
+ *      already links DM Sans and DM Serif Display.
+ *   2. The `*` / `html` / `body` base rules were dropped — resources/css/app.css
+ *      already declares the same reset, font stack, and colors globally.
+ *   3. Every remaining rule is scoped under `.cl-landing`, and the keyframes
+ *      carry a `cl-` prefix. resources/css/app.css contains an older copy of
+ *      this design under different class names, and several names collide
+ *      (.login-card, .role-btn, .hero-content, .slide-dot, formSlideIn, shake,
+ *      spin, kenBurns, heroEnter). Scoping keeps the two from fighting while
+ *      leaving the rendered result identical to the original page.
+ *
+ * This file is imported by resources/js/Pages/Landing.jsx, so it ships in the
+ * landing chunk only and never loads on dashboard pages.
+ */
+
+/*
+ * Two compatibility rules, both restoring what the standalone original
+ * rendered. Neither existed in the source stylesheet, because the source page
+ * had neither Tailwind nor the older landing CSS loaded alongside it.
+ */
+
+/*
+ * Tailwind's preflight (via app.css) sets `h1..h6 { font-weight: inherit }`.
+ * The original page had no such reset, so `.hero h1`, `.about-text h2`, and
+ * `.workflow-header h2` — none of which declare a weight — rendered at the
+ * browser default. Rules below that do declare a weight still win on
+ * specificity.
+ */
+.cl-landing :is(h1, h2, h3, h4, h5, h6) {
+    font-weight: bold;
+}
+
+
+:root {
+    --red: #d94f4f;
+    --red-dark: #b83c3c;
+    --red-light: #e87070;
+    --white: #ffffff;
+    --off-white: #f5f5f5;
+    --gray-100: #f0f0f0;
+    --gray-400: #9a9a9a;
+    --gray-600: #555;
+    --gray-800: #222;
+    --font-body: 'DM Sans', sans-serif;
+    --font-display: 'DM Serif Display', serif;
+  }
+
+/* ── OVERLAY LOGIN MODAL ── */
+
+.cl-landing #login-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    animation: cl-fadeIn .2s ease;
+  }
+
+.cl-landing #login-overlay.active { display: flex; }
+
+@keyframes cl-fadeIn { from { opacity:0; } to { opacity:1; } }
+
+@keyframes cl-slideUp { from { transform:translateY(24px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+/* ── SHARED CARD ── */
+
+.cl-landing .login-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 48px 44px 44px;
+    width: 100%;
+    max-width: 590px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.18);
+    animation: cl-slideUp .28s ease;
+    position: relative;
+  }
+
+.cl-landing .login-card .close-btn {
+    position: absolute;
+    top: 18px; right: 20px;
+    background: none; border: none; cursor: pointer;
+    font-size: 22px; color: var(--gray-400);
+    line-height: 1; transition: color .15s;
+  }
+
+.cl-landing .login-card .close-btn:hover { color: var(--gray-800); }
+
+/* The red tile and its rounded corners now live inside carelink_logo.svg,
+   so these only size and place the mark. */
+.cl-landing .login-logo {
+    width: 64px; height: 64px;
+    display: block;
+    margin: 0 auto 20px;
+    background: none; border-radius: 0;  /* clears app.css's legacy red tile */
+  }
+
+/* ── ROLE SELECTOR SCREEN ── */
+
+.cl-landing .role-screen { display: block; }
+
+.cl-landing .role-screen h2 {
+    font-size: 1.45rem; font-weight: 700;
+    text-align: center; margin-bottom: 6px;
+  }
+
+.cl-landing .role-screen .subtitle {
+    text-align: center; color: var(--gray-600);
+    font-size: .9rem; margin-bottom: 32px;
+  }
+
+.cl-landing .role-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+.cl-landing .role-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px 16px 20px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 14px;
+    background: var(--white);
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s, transform .1s;
+    text-align: center;
+    font-family: var(--font-body);
+    width: 100%;
+    min-height: 140px;
+  }
+
+.cl-landing .role-btn:hover {
+    border-color: var(--red);
+    box-shadow: 0 4px 20px rgba(217,79,79,0.12);
+    transform: translateY(-2px);
+    background: #fff8f8;
+  }
+
+.cl-landing .role-btn:active { transform: translateY(0); }
+
+.cl-landing .role-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: #fef0f0;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+/* The portal seals are circular lock-ups, so they fill the tile rather than
+   sitting at icon size inside it. `object-fit: contain` keeps each one's own
+   aspect ratio — no stretching or cropping — and the square box centres it. */
+.cl-landing .role-icon img {
+    width: 44px; height: 44px;
+    object-fit: contain;
+    display: block;
+    flex-shrink: 0;
+  }
+
+.cl-landing .role-info { flex: 1; width: 100%; }
+
+.cl-landing .role-label {
+    font-size: .9rem; font-weight: 700; color: var(--gray-800);
+    margin-bottom: 4px;
+  }
+
+.cl-landing .role-desc { font-size: 0.65rem; color: var(--gray-400); line-height: 1.2;}
+
+/* ── LOGIN FORM SCREEN ── */
+
+.cl-landing .form-screen { display: none; }
+
+.cl-landing .form-screen.visible { display: block; }
+
+.cl-landing .back-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer;
+    color: var(--gray-600); font-size: .85rem; font-weight: 500;
+    font-family: var(--font-body);
+    margin-bottom: 24px; padding: 0;
+    transition: color .15s;
+  }
+
+.cl-landing .back-btn:hover { color: var(--red); }
+
+.cl-landing .back-btn svg { width: 16px; height: 16px; }
+
+.cl-landing .form-screen .role-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: #fef0f0; color: var(--red);
+    border-radius: 20px; padding: 5px 14px;
+    font-size: .78rem; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+.cl-landing .form-screen .role-badge svg {
+    width: 14px; height: 14px; font-size: 14px;
+    fill: currentColor; flex-shrink: 0;
+  }
+
+.cl-landing .form-screen h2 {
+    font-size: 1.45rem; font-weight: 700;
+    margin-bottom: 5px;
+  }
+
+.cl-landing .form-screen .subtitle {
+    color: var(--gray-600); font-size: .9rem;
+    margin-bottom: 28px;
+  }
+
+.cl-landing .field-label {
+    font-size: .72rem; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--gray-800); margin-bottom: 8px; display: block;
+  }
+
+.cl-landing .form-screen input[type="text"],
+.cl-landing .form-screen input[type="password"],
+.cl-landing .form-screen input[type="email"] {
+    width: 100%;
+    border: 1.5px solid #ddd; border-radius: 10px;
+    padding: 14px 16px; font-family: var(--font-body);
+    font-size: .95rem; color: var(--gray-800);
+    outline: none; transition: border-color .2s; margin-bottom: 18px;
+  }
+
+.cl-landing .form-screen input:focus { border-color: var(--red); }
+
+.cl-landing .login-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+.cl-landing .login-row label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .88rem; color: var(--gray-600); cursor: pointer;
+  }
+
+.cl-landing .login-row input[type="checkbox"] {
+    width: 16px; height: 16px; accent-color: var(--red); cursor: pointer;
+  }
+
+.cl-landing .login-row a {
+    font-size: .88rem; color: var(--red); text-decoration: none; font-weight: 500;
+  }
+
+.cl-landing .login-row a:hover { text-decoration: underline; }
+
+.cl-landing .btn-signin,
+.cl-landing .btn-fp {
+    width: 100%; background: var(--red); color: var(--white);
+    border: none; border-radius: 10px; padding: 15px;
+    font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: background .2s, transform .1s;
+  }
+
+.cl-landing .btn-signin:hover,
+.cl-landing .btn-fp:hover { background: var(--red-dark); }
+
+.cl-landing .btn-signin:active,
+.cl-landing .btn-fp:active { transform: scale(.98); }
+
+/* ── NAVBAR ── */
+
+.cl-landing nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eee;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 48px;
+    height: 64px;
+  }
+
+.cl-landing .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 1.05rem; color: var(--gray-800);
+    text-decoration: none;
+  }
+
+.cl-landing .nav-logo-icon {
+    width: 34px; height: 34px;
+    display: block;
+    flex-shrink: 0;
+    background: none; border-radius: 0;  /* clears app.css's legacy red tile */
+  }
+
+.cl-landing .nav-links {
+    display: flex; align-items: center; gap: 32px;
+  }
+
+.cl-landing .nav-links a {
+    text-decoration: none; color: var(--gray-600);
+    font-size: .92rem; font-weight: 500;
+    transition: color .15s;
+  }
+
+.cl-landing .nav-links a:hover { color: var(--gray-800); }
+
+.cl-landing .btn-login {
+    background: var(--red);
+    color: var(--white);
+    border: none; border-radius: 8px;
+    padding: 10px 22px;
+    font-family: var(--font-body);
+    font-size: .88rem; font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+  }
+
+.cl-landing .btn-login:hover { background: var(--red-dark); }
+
+/* ── HERO / SLIDESHOW ── */
+
+.cl-landing .hero {
+    position: relative;
+    height: 94vh;
+    max-height: 900px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 64px;
+    overflow: hidden;
+    background: #1a1a1a;
+  }
+
+/* Slideshow slides */
+
+.cl-landing .slideshow {
+    position: absolute; inset: 0;
+    z-index: 0;
+  }
+
+.cl-landing .slide {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+  }
+
+.cl-landing .slide.active { opacity: 1; }
+
+/* Dark gradient overlay on top of every slide */
+
+.cl-landing .slide::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(0, 0, 0, 0.658);
+  }
+
+/* Dot indicators */
+
+.cl-landing .slide-dots {
+    position: absolute;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px;
+    z-index: 2;
+  }
+
+.cl-landing .slide-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.45);
+    cursor: pointer;
+    border: none;
+    transition: background .3s, transform .3s;
+  }
+
+.cl-landing .slide-dot.active {
+    background: var(--white);
+    transform: scale(1.25);
+  }
+
+/* SLIDESHOW IMG */
+
+.cl-landing .slide img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform-origin: center center;
+  }
+
+.cl-landing .hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin-top: 100px;
+  }
+
+.cl-landing .hero-eyebrow {
+    font-size: 1rem;
+    color: rgba(255,255,255,.75);
+    letter-spacing: .04em;
+    margin-bottom: 12px;
+  }
+
+.cl-landing .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 6vw, 6rem);
+    color: var(--white);
+    line-height: 1.08;
+    margin-bottom: 24px;
+  }
+
+.cl-landing .hero-divider {
+    width: 60px;
+    height: 3px;
+    background: var(--red);
+    margin-bottom: 24px;
+  }
+
+.cl-landing .hero-desc {
+    font-size: 1.15rem;
+    line-height: 1.75;
+    color: rgba(255,255,255,.85);
+    max-width: 580px;
+  }
+
+/* ── ABOUT ── */
+
+.cl-landing .about {
+    background: var(--red);
+    padding: 80px 64px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: center;
+  }
+
+.cl-landing .about-text h2 {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    color: var(--white);
+    margin-bottom: 20px;
+  }
+
+.cl-landing .about-text p {
+    color: rgba(255,255,255,.88);
+    line-height: 1.8;
+    font-size: .97rem;
+    margin-bottom: 28px;
+  }
+
+.cl-landing .about-features {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+.cl-landing .about-features li {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--white);
+    font-size: .95rem;
+    font-weight: 500;
+  }
+
+.cl-landing .about-features li::before {
+    content: '';
+    display: inline-flex;
+    width: 22px; height: 22px;
+    background: rgba(255,255,255,.2);
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.5);
+    flex-shrink: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3 8l3.5 3.5L13 4.5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-size: 14px; background-repeat: no-repeat; background-position: center;
+  }
+
+.cl-landing .about-photos {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    padding: 20px 10px;
+    align-items: start;
+    overflow: visible;
+  }
+
+.cl-landing .photo-wrap {
+    border-radius: 16px;
+    overflow: hidden;
+    transition: box-shadow .3s ease;
+  }
+
+.cl-landing .photo-wrap:hover {
+    box-shadow: 0 12px 32px rgba(0,0,0,.22);
+  }
+
+/* Stagger offsets */
+
+.cl-landing .photo-wrap:nth-child(1) { margin-top: 30px; }
+
+.cl-landing .photo-wrap:nth-child(2) { margin-top: 10px; }
+
+.cl-landing .photo-wrap:nth-child(3) { margin-top: 10px; }
+
+.cl-landing .photo-wrap:nth-child(4) { margin-top: -10px; }
+
+.cl-landing .photo-wrap img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    display: block;
+    filter: brightness(.88);
+    transition: transform .5s ease, filter .35s ease;
+  }
+
+.cl-landing .photo-wrap img:hover {
+    transform: scale(1.07);
+    filter: brightness(1.02);
+  }
+
+/* ── WORKFLOW ── */
+
+.cl-landing .workflow {
+    padding: 88px 64px;
+    background: var(--white);
+  }
+
+.cl-landing .workflow-header { text-align: center; margin-bottom: 16px; }
+
+.cl-landing .workflow-header h2 {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    color: var(--gray-800);
+  }
+
+.cl-landing .workflow-sub {
+    text-align: center;
+    color: var(--gray-600);
+    margin-bottom: 56px;
+    font-size: .97rem;
+  }
+
+.cl-landing .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+  }
+
+.cl-landing .step {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 10px;
+    padding: 16px 8px;
+    border-radius: 14px;
+    transition: background .2s, transform .2s, box-shadow .2s;
+    cursor: default;
+  }
+
+.cl-landing .step:hover {
+    background: var(--off-white);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.07);
+  }
+
+.cl-landing .step-num {
+    width: 28px; height: 28px;
+    background: var(--red);
+    color: var(--white);
+    border-radius: 50%;
+    font-size: .75rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .2s;
+  }
+
+.cl-landing .step:hover .step-num {
+    transform: scale(1.15);
+  }
+
+.cl-landing .step-icon {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 1.5px solid #e8e8e8;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--white);
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+.cl-landing .step:hover .step-icon {
+    border-color: var(--red);
+    box-shadow: 0 0 0 4px rgba(217,79,79,.1);
+  }
+
+.cl-landing .step-icon svg { width: 26px; height: 26px; color: var(--red); transition: color .2s; }
+
+.cl-landing .step:hover .step-icon svg {
+    color: var(--red-dark);
+  }
+
+.cl-landing .step h4 {
+    font-size: .82rem; font-weight: 600; color: var(--gray-800);
+    line-height: 1.3;
+  }
+
+.cl-landing .step p {
+    font-size: .75rem; color: var(--gray-600); line-height: 1.5;
+  }
+
+/* ── FOOTER ── */
+
+.cl-landing footer {
+    background: var(--gray-800);
+    padding: 28px 64px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+.cl-landing footer span {
+    color: rgba(255,255,255,.6);
+    font-size: .85rem;
+  }
+
+.cl-landing .footer-socials { display: flex; gap: 12px; }
+
+.cl-landing .footer-socials a {
+    width: 42px; height: 42px;
+    border: 1.5px solid rgba(255,255,255,.25);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.7);
+    text-decoration: none;
+    transition: border-color .2s, color .2s, transform .2s, background .2s;
+  }
+
+.cl-landing .footer-socials a:hover {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(217,79,79,.1);
+    transform: translateY(-3px);
+  }
+
+.cl-landing .footer-socials svg { width: 18px; height: 18px; }
+
+/* ── MODAL: smooth open/close ── */
+
+.cl-landing #login-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease;
+  }
+
+.cl-landing #login-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+    display: flex;
+  }
+
+.cl-landing #login-overlay .login-card {
+    transform: translateY(20px) scale(.97);
+    transition: transform .28s cubic-bezier(.34,1.26,.64,1), opacity .25s ease;
+    opacity: 0;
+  }
+
+.cl-landing #login-overlay.active .login-card {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+/* ── FORM SCREEN: slide-in transition ── */
+
+.cl-landing .form-screen {
+    animation: none;
+  }
+
+.cl-landing .form-screen.visible {
+    display: block;
+    animation: cl-formSlideIn .25s cubic-bezier(.34,1.26,.64,1);
+  }
+
+@keyframes cl-formSlideIn {
+    from { opacity: 0; transform: translateX(18px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+/* ── INPUT: enhanced focus ring ── */
+
+.cl-landing .form-screen input[type="text"],
+.cl-landing .form-screen input[type="password"],
+.cl-landing .form-screen input[type="email"] {
+    box-shadow: none;
+    margin-bottom: 6px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+.cl-landing .form-screen input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(217,79,79,.12);
+  }
+
+.cl-landing .form-screen input.input-error {
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 3px rgba(231,76,60,.1);
+    animation: cl-shake .35s ease;
+  }
+
+@keyframes cl-shake {
+    0%,100% { transform: translateX(0); }
+    20%,60%  { transform: translateX(-5px); }
+    40%,80%  { transform: translateX(5px); }
+  }
+
+.cl-landing .field-error {
+    font-size: .75rem;
+    color: #e74c3c;
+    margin-bottom: 12px;
+    display: none;
+    align-items: center;
+    gap: 4px;
+  }
+
+.cl-landing .field-error.visible { display: flex; }
+
+/* ── SIGN IN BUTTON: loading state ── */
+
+.cl-landing .btn-signin {
+    position: relative;
+    overflow: hidden;
+    transition: background .2s, transform .15s, box-shadow .2s, opacity .2s;
+  }
+
+.cl-landing .btn-signin:hover {
+    background: var(--red-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(217,79,79,.35);
+  }
+
+.cl-landing .btn-signin:active { transform: scale(.98); box-shadow: none; }
+
+.cl-landing .btn-signin.loading { opacity: .75; pointer-events: none; }
+
+.cl-landing .btn-signin .spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: cl-spin .6s linear infinite;
+    position: absolute; right: 16px; top: 50%; margin-top: -9px;
+  }
+
+.cl-landing .btn-signin.loading .spinner { display: block; }
+
+@keyframes cl-spin { to { transform: rotate(360deg); } }
+
+/* ── SLIDESHOW: Ken Burns pan effect on active slide ── */
+
+.cl-landing .slide.active img {
+    animation: cl-kenBurns 8s ease-in-out infinite alternate;
+  }
+
+@keyframes cl-kenBurns {
+    from { transform: scale(1)   translate(0,0); }
+    to   { transform: scale(1.06) translate(-1%, -1%); }
+  }
+
+/* Slide progress bar */
+
+.cl-landing .slide-progress {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 3px;
+    background: var(--red);
+    width: 0%;
+    z-index: 3;
+    transition: width linear;
+  }
+
+/* ── HERO CONTENT: entrance animation ── */
+
+.cl-landing .hero-content {
+    animation: cl-heroEnter .9s .2s cubic-bezier(.22,.68,0,1.2) both;
+  }
+
+@keyframes cl-heroEnter {
+    from { opacity: 0; transform: translateY(32px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+/* ── SCROLL REVEAL: sections fade/slide in ── */
+
+.cl-landing .reveal {
+    opacity: 0;
+    transform: translateY(36px);
+    transition: opacity .65s ease, transform .65s cubic-bezier(.22,.68,0,1.2);
+  }
+
+.cl-landing .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+.cl-landing .reveal-delay-1 { transition-delay: .1s; }
+
+.cl-landing .reveal-delay-2 { transition-delay: .2s; }
+
+.cl-landing .reveal-delay-3 { transition-delay: .3s; }
+
+/* ── NAVBAR: scrolled state ── */
+
+.cl-landing nav.scrolled {
+    background: rgba(255,255,255,0.98);
+    box-shadow: 0 2px 20px rgba(0,0,0,0.09);
+    border-bottom-color: transparent;
+  }
+
+.cl-landing nav { transition: background .3s, box-shadow .3s; }
+
+/* ── NAV LINKS: animated underline indicator ── */
+
+.cl-landing .nav-links a {
+    position: relative;
+    padding-bottom: 3px;
+  }
+
+.cl-landing .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; left: 0;
+    width: 0; height: 2px;
+    background: var(--red);
+    border-radius: 2px;
+    transition: width .25s ease;
+  }
+
+.cl-landing .nav-links a:hover::after,
+.cl-landing .nav-links a.active-link::after { width: 100%; }
+
+.cl-landing .nav-links a.active-link { color: var(--red); }
+
+/* ── LOGIN BUTTON: enhanced hover ── */
+
+.cl-landing .btn-login {
+    transition: background .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 2px 8px rgba(217,79,79,.2);
+  }
+
+.cl-landing .btn-login:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(217,79,79,.35);
+  }
+
+.cl-landing .btn-login:active { transform: scale(.97); }
+
+/* ── FORGOT PASSWORD SCREENS ── */
+
+.cl-landing .fp-screen { display: none; }
+
+.cl-landing .fp-screen.visible { display: block; animation: cl-formSlideIn .25s cubic-bezier(.34,1.26,.64,1); }
+
+.cl-landing .fp-screen h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 6px; }
+
+.cl-landing .fp-screen .subtitle { color: var(--gray-600); font-size: .9rem; margin-bottom: 28px; }
+
+.cl-landing .fp-screen input[type="email"],
+.cl-landing .fp-screen input[type="text"],
+.cl-landing .fp-screen input[type="password"] {
+    width: 100%;
+    border: 1.5px solid #ddd; border-radius: 10px;
+    padding: 14px 16px; font-family: var(--font-body);
+    font-size: .95rem; color: var(--gray-800);
+    outline: none; transition: border-color .2s, box-shadow .2s;
+    margin-bottom: 6px;
+    box-sizing: border-box;
+  }
+
+.cl-landing .fp-screen input:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(217,79,79,.12); }
+
+.cl-landing .fp-screen input.input-error { border-color: #e74c3c; box-shadow: 0 0 0 3px rgba(231,76,60,.1); animation: cl-shake .35s ease; }
+
+.cl-landing .btn-fp {
+    width: 100%; background: var(--red); color: var(--white);
+    border: none; border-radius: 10px; padding: 15px;
+    font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: background .2s, transform .15s, box-shadow .2s;
+    margin-top: 10px; position: relative; overflow: hidden;
+  }
+
+.cl-landing .btn-fp:hover { background: var(--red-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(217,79,79,.35); }
+
+.cl-landing .btn-fp:active { transform: scale(.98); }
+
+.cl-landing .btn-fp.loading { opacity: .75; pointer-events: none; }
+
+.cl-landing .btn-fp .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: cl-spin .6s linear infinite; position: absolute; right: 16px; top: 50%; margin-top: -9px; }
+
+.cl-landing .btn-fp.loading .spinner { display: block; }
+
+/* OTP input group */
+
+.cl-landing .otp-group {
+    display: flex; gap: 10px; justify-content: center;
+    margin-bottom: 6px;
+  }
+
+.cl-landing .otp-group input {
+    width: 52px !important; height: 58px;
+    text-align: center; font-size: 1.4rem; font-weight: 700;
+    border: 1.5px solid #ddd; border-radius: 10px;
+    font-family: var(--font-body); color: var(--gray-800);
+    outline: none; transition: border-color .2s, box-shadow .2s;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+
+.cl-landing .otp-group input:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(217,79,79,.12); }
+
+.cl-landing .otp-group input.input-error { border-color: #e74c3c; box-shadow: 0 0 0 3px rgba(231,76,60,.1); }
+
+.cl-landing .resend-row {
+    text-align: center; margin: 14px 0 4px;
+    font-size: .85rem; color: var(--gray-600);
+  }
+
+.cl-landing .resend-row a { color: var(--red); text-decoration: none; font-weight: 500; cursor: pointer; }
+
+.cl-landing .resend-row a:hover { text-decoration: underline; }
+
+.cl-landing .resend-row a.disabled { color: var(--gray-400); pointer-events: none; }
+
+.cl-landing .fp-email-display {
+    display: inline-block; font-weight: 600; color: var(--gray-800);
+  }
+
+/* Password strength bar */
+
+.cl-landing .pw-strength-bar {
+    height: 4px; border-radius: 4px; background: #eee;
+    margin: 6px 0 14px; overflow: hidden;
+  }
+
+.cl-landing .pw-strength-fill {
+    height: 100%; border-radius: 4px; width: 0%;
+    transition: width .3s, background .3s;
+  }
+
+.cl-landing .pw-match-msg { font-size: .75rem; margin-bottom: 10px; display: none; }
+
+.cl-landing .pw-match-msg.show { display: block; }
+
+.cl-landing .pw-match-msg.ok { color: #27ae60; }
+
+.cl-landing .pw-match-msg.err { color: #e74c3c; }
+
+.cl-landing .success-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: #eafaf1; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+  }
+
+@media (max-width: 900px) {
+.cl-landing nav { padding: 0 24px; }
+
+.cl-landing .hero { padding: 56px 28px 48px; }
+
+.cl-landing .about { grid-template-columns: 1fr; padding: 56px 28px; gap: 40px; }
+
+.cl-landing .workflow { padding: 56px 28px; }
+
+.cl-landing .steps-grid { grid-template-columns: repeat(4, 1fr); }
+
+.cl-landing footer { padding: 24px 28px; }
+
+.cl-landing .login-card { margin: 16px; padding: 36px 28px 32px; }
+}
+
+@media (max-width: 600px) {
+.cl-landing .steps-grid { grid-template-columns: repeat(2, 1fr); }
+
+.cl-landing .nav-links { display: none; }
+
+.cl-landing .role-grid { grid-template-columns: repeat(2, 1fr); }
+}

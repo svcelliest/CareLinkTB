@@ -7,7 +7,6 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Override;
 
 class StoreSmsLogRequest extends FormRequest
 {
@@ -36,7 +35,6 @@ class StoreSmsLogRequest extends FormRequest
         ];
     }
 
-    #[Override]
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {

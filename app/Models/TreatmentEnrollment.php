@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Carbon;
 
 class TreatmentEnrollment extends Model
@@ -22,6 +23,53 @@ class TreatmentEnrollment extends Model
         'category_3_new_ep' => 12,
         'category_4_retreatment_ep' => 12,
     ];
+
+    /**
+     * Length of the intensive phase in months — 2 for the categories using
+     * 2HRZE (1 and 3), 3 for the categories using 2HRZES/1HRZE (2 and 4,
+     * the injection month plus the tablet month). Deliberately NOT a fixed
+     * "first 2 months" constant like the medjofinal reference used — that
+     * was only ever correct for category_1, and would mislabel a category_2/4
+     * patient as "Continuation Phase" while still genuinely intensive.
+     */
+    private const REGIMEN_INTENSIVE_MONTHS = [
+        'category_1_new' => 2,
+        'category_2_retreatment' => 3,
+        'category_3_new_ep' => 2,
+        'category_4_retreatment_ep' => 3,
+    ];
+
+    public const REGISTRATION_GROUPS = [
+        'new',
+        'relapse',
+        'treatment_after_failure',
+        'treatment_after_loss_to_follow_up',
+        'transfer_in',
+    ];
+
+    /** The 4 DOH NTP categories (see REGIMEN_MONTH_COUNTS) plus drug_resistant. */
+    public const TREATMENT_REGIMENS = [
+        'category_1_new',
+        'category_2_retreatment',
+        'category_3_new_ep',
+        'category_4_retreatment_ep',
+        'drug_resistant',
+    ];
+
+    public const OUTCOMES = [
+        'cured',
+        'treatment_completed',
+        'treatment_failed',
+        'died',
+        'lost_to_follow_up',
+        'not_evaluated',
+    ];
+
+    /**
+     * A month needs this many non-initial dispensing visits (weeks 1-4;
+     * week 0's enrollment-day release doesn't count) before it's complete.
+     */
+    private const REQUIRED_DISPENSING_VISITS_PER_MONTH = 4;
 
     /**
      * Follow-up exam schedule by diagnosis classification. Read live off
@@ -106,6 +154,23 @@ class TreatmentEnrollment extends Model
     }
 
     /**
+     * Every dispensing visit across every month, in chronological order —
+     * needed for the medicine supply tracker, which looks at the visit
+     * immediately following a given one regardless of which month either
+     * falls in.
+     */
+    public function medicationDispensingRecords(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            MedicationDispensingRecord::class,
+            TreatmentMonitoringRecord::class,
+            'treatment_enrollment_id',
+            'treatment_monitoring_id',
+        )->orderBy('medication_dispensing_records.month_number')
+            ->orderBy('medication_dispensing_records.week_number');
+    }
+
+    /**
      * @return int[]
      */
     public function followUpExamScheduleMonths(): array
@@ -149,6 +214,21 @@ class TreatmentEnrollment extends Model
     }
 
     /**
+     * "Intensive Phase" or "Continuation Phase" for a given month of this
+     * enrollment's own regimen — see REGIMEN_INTENSIVE_MONTHS for why this
+     * isn't a fixed month-2 cutoff.
+     */
+    public function phaseFor(int $month): string
+    {
+        return $month <= $this->intensivePhaseMonths() ? 'Intensive Phase' : 'Continuation Phase';
+    }
+
+    public function intensivePhaseMonths(): int
+    {
+        return self::REGIMEN_INTENSIVE_MONTHS[$this->treatment_regimen] ?? 2;
+    }
+
+    /**
      * (total doses actually taken) / (total doses expected so far) × 100.
      * "Expected" is weighted per month by that month's own prescribed_dose
      * and only counts weeks that actually have a dispensing row — a week
@@ -179,5 +259,75 @@ class TreatmentEnrollment extends Model
         }
 
         return round(($dosesTaken / $dosesExpected) * 100, 1);
+    }
+
+    /**
+     * A month is complete once its clinical review is saved AND all 4
+     * weekly dispensing returns are recorded — not the calendar. A month
+     * the RHU hasn't finished stays current however long it takes.
+     */
+    public function isMonthComplete(int $month): bool
+    {
+        $review = $this->treatmentMonitoringRecords()
+            ->where('month_number', $month)
+            ->first();
+
+        if ($review === null || ! $review->isSaved()) {
+            return false;
+        }
+
+        return $review->medicationDispensingRecords()
+            ->where('is_initial', false)
+            ->count() >= self::REQUIRED_DISPENSING_VISITS_PER_MONTH;
+    }
+
+    /**
+     * The month this enrollment is currently in: the first one that isn't
+     * yet complete, clamped to the regimen length. Null when the regimen
+     * has no defined length yet (`drug_resistant`, still deferred).
+     */
+    public function currentMonth(): ?int
+    {
+        $totalMonths = $this->regimenMonthCount();
+
+        if ($totalMonths === null) {
+            return null;
+        }
+
+        for ($month = 1; $month <= $totalMonths; $month++) {
+            if (! $this->isMonthComplete($month)) {
+                return $month;
+            }
+        }
+
+        return $totalMonths;
+    }
+
+    public function allMonthsComplete(): bool
+    {
+        $totalMonths = $this->regimenMonthCount();
+
+        return $totalMonths !== null && $this->isMonthComplete($totalMonths);
+    }
+
+    /**
+     * "TB-2026-001" style, ported from the medjofinal reference's
+     * `allocateCaseNumber()` — used only by the Patient Monitoring list's
+     * quick-enroll modal, which (unlike the main enrollment page) doesn't
+     * collect `registry_number` from the RHU at all.
+     */
+    public static function allocateRegistryNumber(?int $year = null, bool $lock = false): string
+    {
+        $year ??= (int) now()->format('Y');
+        $prefix = "TB-{$year}-";
+
+        $highest = static::query()
+            ->where('registry_number', 'like', $prefix.'%')
+            ->when($lock, fn ($query) => $query->lockForUpdate())
+            ->pluck('registry_number')
+            ->map(static fn (string $number): int => (int) substr($number, strlen($prefix)))
+            ->max() ?? 0;
+
+        return $prefix.str_pad((string) ($highest + 1), 3, '0', STR_PAD_LEFT);
     }
 }

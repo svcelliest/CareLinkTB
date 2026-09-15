@@ -32,6 +32,7 @@ class IcmAccountController extends Controller
         $managedAccounts = User::query()->whereIn('role', ['rhu', 'provider']);
 
         $accounts = (clone $managedAccounts)
+            ->with('location')
             ->when($role !== 'all', fn (Builder $query) => $query->where('role', $role))
             ->when($status === 'active', fn (Builder $query) => $query->whereNull('disabled_at'))
             ->when($status === 'disabled', fn (Builder $query) => $query->whereNotNull('disabled_at'))
@@ -57,6 +58,7 @@ class IcmAccountController extends Controller
                 'name' => $account->name,
                 'email' => $account->email,
                 'role' => $account->role,
+                'location' => $account->location?->name,
                 'is_active' => $account->disabled_at === null,
                 'disabled_at' => $account->disabled_at?->toIso8601String(),
                 'created_at' => $account->created_at?->toIso8601String(),
@@ -70,9 +72,15 @@ class IcmAccountController extends Controller
                 'active' => (clone $managedAccounts)->whereNull('disabled_at')->count(),
                 'disabled' => (clone $managedAccounts)->whereNotNull('disabled_at')->count(),
             ],
-            'locations' => Location::where('level', 'municipality')
-                ->orderBy('name')
-                ->get(['id', 'name']),
+            // The full province/municipality/barangay tree (~400 rows, cheap to
+            // send whole) — Create Account's cascade filters it client-side by
+            // `parent_id` so a coordinator can narrow by province or search by
+            // barangay name. Only the municipality actually gets submitted as
+            // `location_id`: every RHU authorization check in the app compares
+            // it by exact equality against a program's own municipality-level
+            // `location_id`, so storing anything deeper would silently lock
+            // that account out of everything it should see.
+            'locations' => Location::orderBy('name')->get(['id', 'name', 'level', 'parent_id']),
         ]);
     }
 

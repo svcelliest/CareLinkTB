@@ -10,6 +10,24 @@ class ContactTracingRecord extends Model
 {
     use HasFactory;
 
+    /** Dropdown label lists — ported from the medjofinal reference for its
+     * Contact Tracing form. `contact_method`/`tpt_not_enrolled_reason` are
+     * this schema's real enums; the Yes/No lists are display labels only —
+     * this schema stores those answers as real booleans, not strings. */
+    public const VISIT_TYPES = ['Call', 'Home Visit'];
+
+    public const YES_NO = ['Yes', 'No'];
+
+    public const TAKING_MEDS = ['Yes', 'No', 'Not Applicable'];
+
+    public const TPT_REASONS = [
+        'Contact of CD patient',
+        'RHU not providing TPT',
+        'Contact refused TPT',
+        'Negative CXR',
+        'Other',
+    ];
+
     protected $fillable = [
         'patient_id',
         'visit_date',

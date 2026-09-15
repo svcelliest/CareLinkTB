@@ -11,6 +11,8 @@ class TreatmentMonitoringRecord extends Model
 {
     use HasFactory;
 
+    public const CLINICAL_STATUSES = ['Improving', 'Stable', 'Worsening'];
+
     protected $fillable = [
         'treatment_enrollment_id',
         'month_number',
@@ -19,6 +21,7 @@ class TreatmentMonitoringRecord extends Model
         'clinical_status',
         'remarks',
         'recorded_by',
+        'saved_at',
     ];
 
     protected function casts(): array
@@ -27,6 +30,7 @@ class TreatmentMonitoringRecord extends Model
             'month_number' => 'integer',
             'current_weight' => 'decimal:1',
             'prescribed_dose' => 'integer',
+            'saved_at' => 'datetime',
         ];
     }
 
@@ -43,5 +47,10 @@ class TreatmentMonitoringRecord extends Model
     public function medicationDispensingRecords(): HasMany
     {
         return $this->hasMany(MedicationDispensingRecord::class, 'treatment_monitoring_id');
+    }
+
+    public function isSaved(): bool
+    {
+        return $this->saved_at !== null;
     }
 }

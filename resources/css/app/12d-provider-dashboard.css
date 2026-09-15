@@ -1,0 +1,608 @@
+/* ══════════════════════════════════════════════
+   PROVIDER PORTAL — REFERENCE-MATCHED DASHBOARD
+   Values copied from provider_portal.html. Scoped to the provider dashboard
+   wrapper because .stat-card and .activity-item are generic enough to collide
+   with the shared Activity page and the ICM/RHU dashboards.
+
+   The `.stat-*` rules are additionally scoped to `.dash-content-completed`:
+   the Completed / Upcoming program view shows the same KPI cards, and one
+   set of rules is what keeps the two rows identical.
+   ══════════════════════════════════════════════ */
+
+.dash-content-provider-overview .dash-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+/* Informational cards. The hover lift below is kept — it is what makes the
+   row read as live rather than flat — but the cards no longer navigate, so
+   they take the normal cursor instead of the pointer that promised a click. */
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    transition:
+        box-shadow 0.2s,
+        transform 0.15s;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    text-decoration: none;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--kpi-accent, #c0392b);
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-card:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-label {
+    font-size: 10.5px;
+    color: #6b7280;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-icon.blue {
+    background: #eef2ff;
+}
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-icon.green {
+    background: #edfaf3;
+}
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-icon.red {
+    background: #fef0f0;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-icon svg {
+    width: 19px;
+    height: 19px;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: #1a1a1a;
+    line-height: 1;
+}
+
+:is(.dash-content-provider-overview, .dash-content-completed) .stat-sub {
+    font-size: 11px;
+    color: #9aa1ad;
+    font-weight: 500;
+}
+
+.dash-content-provider-overview .dash-lower {
+    margin-top: 0;
+    max-width: none;
+}
+
+/* The shared summary grid caps itself at 1120px, which left the stat row
+   51px short of the full-width rows beneath it. Uncap it here so all three
+   rows share one right edge. */
+.dash-content-provider-overview .dashboard-summary-grid {
+    max-width: none;
+}
+
+.dash-content-provider-overview .activities-card {
+    min-height: 450px;
+}
+
+/* The right column stretches to the activities card, so let its two cards
+   absorb that height instead of leaving dead space under the column. */
+.dash-content-provider-overview .ongoing-card,
+.dash-content-provider-overview .upcoming-card {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Real cards hold a top block and a bottom block, so the extra height goes
+   between them. Skeletons are a flat stack and just stay top-aligned. */
+.dash-content-provider-overview .ongoing-card:not(.is-skeleton),
+.dash-content-provider-overview .upcoming-card:not(.is-skeleton) {
+    justify-content: space-between;
+}
+
+.dash-content-provider-overview .view-all {
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+
+.dash-content-provider-overview .view-all:hover {
+    background: #fef0f0;
+    color: #a93226;
+}
+
+.dash-content-provider-overview .view-all svg {
+    width: 13px;
+    height: 13px;
+}
+
+.dash-content-provider-overview .activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dash-content-provider-overview .activity-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f5f0f0;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-radius: 8px;
+    /* pulled out to the card's edge, so the hover fill runs the full width */
+    margin: 0 -12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.dash-content-provider-overview .activity-item:hover {
+    background: #fdf5f5;
+}
+
+.dash-content-provider-overview .activity-item:last-child {
+    border-bottom: none;
+}
+
+.dash-content-provider-overview .activity-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+.dash-content-provider-overview .activity-title strong {
+    font-weight: 700;
+}
+
+.dash-content-provider-overview .activity-title .presump {
+    color: #e74c3c;
+    font-weight: 700;
+}
+
+.dash-content-provider-overview .activity-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 500;
+}
+
+.dash-content-provider-overview .activity-tag {
+    font-size: 10px;
+    font-weight: 700;
+    color: #c0392b;
+    letter-spacing: 0.4px;
+}
+
+.dot-sep {
+    color: #ddd;
+}
+
+.dash-content-provider-overview .ongoing-dot.idle {
+    background: #d5d5d5;
+}
+
+.dash-content-provider-overview .ap-empty {
+    text-align: center;
+    padding: 32px;
+    color: #bbb;
+    font-size: 13px;
+}
+
+/* ══ Reference confirm / success modal ══ */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-box {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px 28px 24px;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    text-align: center;
+}
+
+.modal-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+.modal-icon.success {
+    background: #edfaf3;
+}
+.modal-icon.confirm {
+    background: #fef9e7;
+}
+
+.modal-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.modal-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+}
+
+.modal-body {
+    font-size: 13.5px;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 22px;
+}
+
+.modal-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.modal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+
+.modal-btn.ok {
+    background: #27ae60;
+    color: #fff;
+}
+.modal-btn.ok:hover {
+    background: #1e8449;
+}
+.modal-btn.primary {
+    background: #c0392b;
+    color: #fff;
+}
+.modal-btn.primary:hover {
+    background: #a93226;
+}
+.modal-btn.secondary {
+    background: #f0f0f0;
+    color: #555;
+}
+.modal-btn.secondary:hover {
+    background: #e0e0e0;
+}
+.modal-btn:disabled {
+    opacity: 0.75;
+    cursor: default;
+}
+
+/* ══ Inline action spinner. Distinct from the login .btn-spinner, which is
+      absolutely positioned inside its own button. ══ */
+
+.action-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
+}
+
+.clear-btn .action-spinner,
+.modal-btn.secondary .action-spinner {
+    border-color: rgba(0, 0, 0, 0.15);
+    border-top-color: #555;
+}
+
+/* ══ Skeletons ══ */
+
+.skeleton-line,
+.skeleton-block {
+    display: block;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #f0ecec 25%, #f8f5f5 37%, #f0ecec 63%);
+    background-size: 400% 100%;
+    animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+.skeleton-line + .skeleton-line {
+    margin-top: 8px;
+}
+
+/* explicit spacing for placeholders that stand in for a gap the real content
+   gets from its own margins */
+.skeleton-line.skeleton-gap {
+    margin-top: 14px;
+}
+
+.skeleton-line.skeleton-gap-sm {
+    margin-top: 6px;
+}
+
+.upcoming-item.skeleton-gap {
+    margin-top: 14px;
+}
+
+.stat-card.is-skeleton .skeleton-block.stat-icon {
+    background: #f0ecec;
+}
+
+.ongoing-card.is-skeleton .skeleton-block.ongoing-dot,
+.upcoming-card.is-skeleton .skeleton-block.upcoming-icon {
+    background: #f0ecec;
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0 50%;
+    }
+}
+
+/* ══ Screening field validation and busy states ══ */
+
+.field-error-msg {
+    margin-top: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #c0392b;
+}
+
+.add-patient-btn,
+.finish-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.add-patient-btn:disabled,
+.finish-btn:disabled {
+    opacity: 0.75;
+    cursor: default;
+}
+
+.action-warn-btn:disabled,
+.action-more-btn:disabled,
+.action-notify-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.prog-list-empty {
+    text-align: center;
+    padding: 48px;
+    color: #bbb;
+    font-size: 14px;
+}
+
+.completed-patient-empty {
+    text-align: center;
+    padding: 32px;
+    color: #bbb;
+    font-size: 13px;
+}
+
+
+/* ══ Screening registration form ══
+   provider_portal.html's `.field-*` controls: 12px labels in #555 over 8px
+   inputs at 13.5px, and a plain red border on focus rather than a ring. The
+   global `.field-*` rules those override belong to the landing page's login
+   modal, which is why these are scoped here instead of edited in place. */
+
+.dash-content-screening .field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.dash-content-screening .field-input {
+    border-color: #e8e0e0;
+    border-radius: 8px;
+    padding: 11px 13px;
+    font-size: 13.5px;
+    font-family: inherit;
+    color: #1a1a1a;
+    margin-bottom: 0;
+}
+
+.dash-content-screening .field-input:focus {
+    border-color: #c0392b;
+    box-shadow: none;
+}
+
+/* Validation keeps its ring: it has to read as an error, not just as focus. */
+.dash-content-screening .field-input.input-error {
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+}
+
+.dash-content-screening .register-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dash-content-screening .register-title svg {
+    width: 20px;
+    height: 20px;
+    color: #c0392b;
+}
+
+/* ══ Reference icon sizing ══
+   provider_portal.html sizes each icon in CSS. The components render MUI
+   icons, which size themselves off font-size, so these width/height rules are
+   what pin them to the reference's dimensions. */
+
+.dash-content-provider-programs .prog-loc-row svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.dash-content-provider-programs .prog-meta-item svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.dash-content-provider-programs .prog-meta-item span {
+    white-space: nowrap;
+}
+
+.dash-content-provider-programs .prog-arrow svg {
+    width: 18px;
+    height: 18px;
+}
+
+.dash-content-screening .screening-back svg {
+    width: 20px;
+    height: 20px;
+}
+
+.dash-content-screening .screening-back:hover .screening-back-text {
+    color: #c0392b;
+}
+
+.dash-content-screening .finish-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.dash-content-screening .last-updated svg {
+    width: 13px;
+    height: 13px;
+}
+
+.dash-content-screening .patient-export-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.dash-content-screening .action-warn-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+.dash-content-screening .action-notify-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.dash-content-screening .empty-patients p {
+    font-size: 14px;
+}
+
+.dash-content-completed .completed-back svg {
+    width: 18px;
+    height: 18px;
+}
+
+.dash-content-completed .completed-export-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.dash-content-completed .view-only-badge svg {
+    width: 13px;
+    height: 13px;
+}
+
+.dash-content-completed .completed-patient-table .pt-name {
+    font-weight: 700;
+    color: #1a1a1a;
+    font-size: 13px;
+}
+
+/* The programs card spans the row beneath the two-column block above it. */
+.dash-content-provider-overview .active-programs-card {
+    width: 100%;
+    /* margin-bottom: 5vh; */
+}
+
+.dash-content-provider-overview .activity-time-col {
+    font-size: 11.5px;
+    color: #aaa;
+    white-space: nowrap;
+    flex-shrink: 0;
+}

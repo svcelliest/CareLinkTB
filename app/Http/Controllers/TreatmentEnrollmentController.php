@@ -88,7 +88,7 @@ class TreatmentEnrollmentController extends Controller
         });
 
         return redirect()
-            ->route('rhu.programs.show', $patient->program_id)
+            ->route('rhu.tracker.index')
             ->with('success', "{$patient->name} was enrolled in treatment.");
     }
 

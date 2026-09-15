@@ -18,50 +18,82 @@ use Inertia\Response;
 
 class ProviderController extends Controller
 {
+    /**
+     * Ported UI ([[carelink_tb_provider_dashboard_pull]]) renders every
+     * section behind its own `<Deferred>`, each with a shape-preserving
+     * skeleton — so none of these queries need to run before the first
+     * paint. All 5 share the default defer group, batched into one
+     * follow-up request once the shell has rendered.
+     */
     public function dashboard(Request $request): Response
     {
         $user = $request->user();
-        $patients = Patient::all();
-        $presumptiveCount = $patients->filter(fn (Patient $patient) => $patient->isPresumptive())->count();
-
-        $ongoing = Program::active()
-            ->with('location')
-            ->withCount('patients')
-            ->orderByDesc('scheduled_at')
-            ->first();
-
-        $upcoming = Program::upcoming()
-            ->with('location')
-            ->withCount('patients')
-            ->orderBy('scheduled_at')
-            ->first();
-
-        $recentPrograms = Program::with('location')
-            ->withCount('patients')
-            ->orderByDesc('scheduled_at')
-            ->take(5)
-            ->get();
-
-        $recentActivities = $user->activities()->latest()->take(5)->get();
 
         return Inertia::render('Provider/Dashboard', [
             'user' => $user,
-            'stats' => [
-                'total_programs' => Program::count(),
-                'active_programs' => Program::active()->count(),
-                'registered_patients' => $patients->count(),
-                'presumptive_count' => $presumptiveCount,
-            ],
-            'ongoing' => $ongoing ? $this->mapProgramSummary($ongoing) : null,
-            'upcoming' => $upcoming ? $this->mapProgramSummary($upcoming) : null,
-            'recent_programs' => $recentPrograms->map(fn (Program $program) => $this->mapProgramSummary($program)),
-            'recent_activities' => $recentActivities->map(fn ($activity) => [
-                'id' => $activity->id,
-                'title' => $activity->title,
-                'description' => $activity->description,
-                'time_label' => $activity->created_at->diffForHumans(),
-            ]),
+            'stats' => Inertia::defer(function () {
+                $patients = Patient::all();
+                $presumptiveCount = $patients->filter(fn (Patient $patient) => $patient->isPresumptive())->count();
+
+                return [
+                    'total_programs' => Program::count(),
+                    'active_programs' => Program::active()->count(),
+                    'registered_patients' => $patients->count(),
+                    'presumptive_count' => $presumptiveCount,
+                ];
+            }),
+            'ongoing' => Inertia::defer(function () {
+                $ongoing = Program::active()
+                    ->with('location')
+                    ->withCount('patients')
+                    ->orderByDesc('scheduled_at')
+                    ->first();
+
+                return $ongoing ? $this->mapProgramSummary($ongoing) : null;
+            }),
+            'upcoming' => Inertia::defer(function () {
+                $upcoming = Program::upcoming()
+                    ->with('location')
+                    ->withCount('patients')
+                    ->orderBy('scheduled_at')
+                    ->first();
+
+                return $upcoming ? $this->mapProgramSummary($upcoming) : null;
+            }),
+            'recent_programs' => Inertia::defer(fn () => Program::with('location')
+                ->withCount('patients')
+                ->orderByDesc('scheduled_at')
+                ->take(5)
+                ->get()
+                ->map(fn (Program $program) => $this->mapProgramSummary($program))),
+            'recent_activities' => Inertia::defer(fn () => $user->activities()
+                ->latest()
+                ->take(5)
+                ->get()
+                ->map(fn ($activity) => [
+                    'id' => $activity->id,
+                    'title' => $activity->title,
+                    'description' => $activity->description,
+                    'tag' => $this->activityTag($activity->type),
+                    'datetime_label' => $activity->created_at->timezone('Asia/Manila')->format('M j, Y – g:i A'),
+                ])),
         ]);
+    }
+
+    /**
+     * The short uppercase category shown next to each activity row —
+     * derived from the logged `type` string, matching the mockup's
+     * REGISTRATION / STATUS UPDATE labels for the two types it has a
+     * real opinion about; anything else falls back to a generic label
+     * built from the type itself rather than inventing a new category.
+     */
+    private function activityTag(string $type): string
+    {
+        return match ($type) {
+            'program.patient_registered' => 'REGISTRATION',
+            'program.patient_flagged', 'program.patient_cleared' => 'STATUS UPDATE',
+            default => strtoupper(str_replace(['program.patient_', 'program.', '_'], ['', '', ' '], $type)),
+        };
     }
 
     public function programs(): Response
@@ -288,6 +320,7 @@ class ProviderController extends Controller
             'location' => $program->location?->name,
             'status' => $program->status,
             'date_label' => $program->scheduled_at->timezone('Asia/Manila')->format('M j, Y'),
+            'iso_date_label' => $program->scheduled_at->timezone('Asia/Manila')->format('Y-m-d'),
             'time_label' => $program->scheduled_at->timezone('Asia/Manila')->format('g:i A'),
             'patients_count' => $program->patients_count ?? null,
         ];
