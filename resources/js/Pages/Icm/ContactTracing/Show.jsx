@@ -57,20 +57,20 @@ export default function Show({ case: record, tracing }) {
                 </Link>
 
                 <Card className="mb-[18px] flex flex-wrap items-center justify-between gap-5 px-[22px] py-[18px]">
-                    <div className="flex items-center gap-3.5">
+                    <div className="flex min-w-0 items-center gap-3.5">
                         <span
                             className="grid size-[52px] place-items-center rounded-xl bg-brand-soft font-extrabold text-brand"
                             aria-hidden="true"
                         >
                             {initials(record.patient.name)}
                         </span>
-                        <div>
-                            <h2 className="text-lg font-bold text-ink">
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-bold break-words text-ink">
                                 {record.patient.name}
                             </h2>
                             <div className="mt-1 flex flex-wrap items-center gap-2.5">
                                 <span className="text-[11.5px] font-semibold text-muted">
-                                    Case No. {record.case_number}
+                                    TB Registry No. {record.case_number}
                                 </span>
                                 <StatusPill tone={record.is_closed ? "completed" : "active"}>
                                     {record.is_closed
@@ -112,7 +112,7 @@ function Summary({ record }) {
                         value: record.patient.age ? `${record.patient.age} years old` : "—",
                     },
                     { label: "Contact Number", value: record.patient.contact_number ?? "—" },
-                    { label: "TB Case Number", value: record.case_number },
+                    { label: "TB Registry Number", value: record.case_number },
                     { label: "TB Diagnosis", value: record.patient.tb_diagnosis },
                     { label: "Enrolled / Screened As", value: record.enrolled_as ?? "—" },
                     { label: "Registration Group", value: record.registration_group },

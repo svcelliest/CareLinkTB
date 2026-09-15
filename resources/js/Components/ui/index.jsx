@@ -208,6 +208,14 @@ export function TreatmentStatus({ status, className = "" }) {
 /**
  * Modal shell: dim backdrop, click-outside and Escape to close, and a body
  * scroll lock while it is open.
+ *
+ * The backdrop scrolls and the card is `my-auto` inside it, so a card taller
+ * than the viewport is reachable from its top edge rather than centred and
+ * clipped — the one flex-centring arrangement every browser gets right.
+ *
+ * `flush` drops the card's own padding for forms that draw their own header,
+ * scrolling body and footer. It is a prop rather than a `p-0` in `className`
+ * because Tailwind emits `.p-0` before `.p-7`, so the override would lose.
  */
 export function Modal({
     open,
@@ -215,6 +223,7 @@ export function Modal({
     labelledBy,
     describedBy,
     locked = false,
+    flush = false,
     className = "",
     children,
 }) {
@@ -251,7 +260,10 @@ export function Modal({
                 aria-labelledby={labelledBy}
                 aria-describedby={describedBy}
                 className={cx(
-                    "my-auto w-full rounded-2xl bg-white p-7 shadow-[0_20px_60px_rgba(0,0,0,0.2)]",
+                    "my-auto w-full rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]",
+                    // A flush card clips its own square-cornered header and
+                    // footer to the rounded card.
+                    flush ? "overflow-hidden" : "p-7",
                     className || "max-w-[440px]",
                 )}
             >

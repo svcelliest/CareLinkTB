@@ -25,7 +25,7 @@ class ProgramController extends Controller
      * have always written into `responses.tb_case_classification`, so the two
      * screens stay in agreement.
      */
-    private const TB_DIAGNOSES = ['bc_ds_tb', 'cd_ds_tb', 'rr_tb', 'none'];
+    private const TB_DIAGNOSES = ['bc_ds_tb', 'cd_ds_tb', 'rr_tb', 'rr_dstb', 'none'];
 
     public function index(Request $request): Response
     {

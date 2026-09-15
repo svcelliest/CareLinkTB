@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\TreatmentCase;
-use App\Models\TreatmentContactTracing;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -76,21 +75,13 @@ class IcmContactTracingController extends Controller
                 'traced' => (clone $base)->whereHas('contactTracing')->count(),
                 'pending' => (clone $base)->whereDoesntHave('contactTracing')->count(),
             ],
-            // The same option lists the RHU's form offers, so the register's
-            // selects show the recorded answer with its exact wording.
-            'options' => [
-                'visit_types' => TreatmentContactTracing::VISIT_TYPES,
-                'yes_no' => TreatmentContactTracing::YES_NO,
-                'taking_meds' => TreatmentContactTracing::TAKING_MEDS,
-                'tpt_reasons' => TreatmentContactTracing::TPT_REASONS,
-            ],
         ]);
     }
 
     /**
      * The filed ACF answers as one flat row of the register — the raw values,
-     * keyed as the RHU's form stores them, so a select can show the recorded
-     * option. Blank when nothing has been filed yet.
+     * keyed as the RHU's form stores them and printed as recorded. Blank when
+     * nothing has been filed yet.
      *
      * @return array<string, string>
      */

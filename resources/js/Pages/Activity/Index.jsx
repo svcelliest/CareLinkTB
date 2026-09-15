@@ -32,7 +32,7 @@ function moduleLabel(type) {
         return "Registration";
     }
     if (type === "program.patient_status_updated") return "Status Update";
-    if (type === "program.patient_notified") return "SMS";
+    if (type === "program.patient_notified" || type.startsWith("sms.")) return "SMS";
     if (type.startsWith("program.")) return "Programs";
     if (type.startsWith("message.")) return "Messages";
     if (type.startsWith("account.")) return "Accounts";

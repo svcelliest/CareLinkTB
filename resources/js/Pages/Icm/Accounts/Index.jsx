@@ -79,6 +79,9 @@ export default function Index({ accounts, filters, stats, municipalities }) {
     const { flash } = usePage().props;
     const [search, setSearch] = useState(filters.search ?? "");
     const [createOpen, setCreateOpen] = useState(false);
+    // Shown instead of closing the create dialog when there is unsaved input.
+    // The form is left untouched behind it, so Keep Editing gives it back.
+    const [confirmingDiscard, setConfirmingDiscard] = useState(false);
     const [statusAccount, setStatusAccount] = useState(null);
     const [statusProcessing, setStatusProcessing] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -142,7 +145,42 @@ export default function Index({ accounts, filters, stats, municipalities }) {
             password_confirmation: password,
         });
         setCopied(false);
+        setConfirmingDiscard(false);
         setCreateOpen(true);
+    };
+
+    /**
+     * Anything typed that would be lost by closing. The password is
+     * auto-generated on open, so it never counts as the coordinator's work;
+     * the role only counts once it has been moved off the default.
+     */
+    const createIsDirty =
+        Boolean(createForm.data.name.trim()) ||
+        Boolean(createForm.data.email.trim()) ||
+        Boolean(createForm.data.municipality) ||
+        createForm.data.role !== "rhu";
+
+    const discardCreate = () => {
+        setConfirmingDiscard(false);
+        createForm.clearErrors();
+        createForm.reset();
+        setCreateOpen(false);
+    };
+
+    /** Closing with unsaved input asks first; nothing is cleared until it does. */
+    const requestCloseCreate = () => {
+        if (createForm.processing) return;
+        // Escape reaches both stacked dialogs; while the question is up it
+        // means "keep editing", not "ask again".
+        if (confirmingDiscard) {
+            setConfirmingDiscard(false);
+            return;
+        }
+        if (createIsDirty) {
+            setConfirmingDiscard(true);
+            return;
+        }
+        discardCreate();
     };
 
     const setRole = (role) => {
@@ -492,12 +530,49 @@ export default function Index({ accounts, filters, stats, municipalities }) {
 
             <Modal
                 open={createOpen}
-                onClose={() => setCreateOpen(false)}
+                onClose={requestCloseCreate}
                 locked={createForm.processing}
                 labelledBy="create-account-title"
                 describedBy="create-account-description"
                 className="max-w-[480px]"
             >
+                {/* Asked in its own dialog stacked over the form, so the form
+                    stays exactly as typed underneath and is still there if the
+                    answer is Keep Editing. Same card, backdrop and buttons as
+                    the program dialog's discard prompt. */}
+                <Modal
+                    open={confirmingDiscard}
+                    onClose={() => setConfirmingDiscard(false)}
+                    labelledBy="create-account-discard-title"
+                    describedBy="create-account-discard-description"
+                    className="max-w-[440px]"
+                >
+                    <h2
+                        id="create-account-discard-title"
+                        className="mb-1 text-[17px] font-bold text-ink"
+                    >
+                        Discard Account
+                    </h2>
+                    <p
+                        id="create-account-discard-description"
+                        className="mb-5 text-[13px] text-muted"
+                    >
+                        This account has not been created yet. The details you
+                        entered will be lost.
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap justify-end gap-2.5">
+                        <Button
+                            variant="secondary"
+                            onClick={() => setConfirmingDiscard(false)}
+                        >
+                            Keep Editing
+                        </Button>
+                        <Button variant="danger" onClick={discardCreate}>
+                            Discard Account
+                        </Button>
+                    </div>
+                </Modal>
+
                 <h2
                     id="create-account-title"
                     className="mb-1 text-[17px] font-bold text-ink"
@@ -627,7 +702,7 @@ export default function Index({ accounts, filters, stats, municipalities }) {
                     <div className="mt-1.5 flex justify-end gap-2.5">
                         <Button
                             variant="secondary"
-                            onClick={() => setCreateOpen(false)}
+                            onClick={requestCloseCreate}
                             disabled={createForm.processing}
                         >
                             Cancel

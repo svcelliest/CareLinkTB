@@ -43,9 +43,6 @@ class StoreDispensingRecordRequest extends FormRequest
             ],
             'doses_taken' => ['nullable', 'integer', 'min:0', 'max:400'],
 
-            'missed_reason' => ['nullable', 'string', 'max:150'],
-            'missed_intervention' => ['nullable', 'string', 'max:150'],
-
             // The form now asks Yes / No / Other and, for Other, what the
             // effect was. Stored as before in the `side_effects` array: empty
             // for No, ["Yes"] for Yes, or the text the RHU typed. Older records

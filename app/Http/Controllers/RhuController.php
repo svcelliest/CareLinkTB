@@ -123,7 +123,7 @@ class RhuController extends Controller
         return match (true) {
             str_starts_with($type, 'treatment.') => 'TREATMENT',
             str_starts_with($type, 'diagnostic.') => 'PATIENT TRACKER',
-            $type === 'program.patient_notified' => 'SMS LOG',
+            $type === 'program.patient_notified', str_starts_with($type, 'sms.') => 'SMS LOG',
             str_starts_with($type, 'program.') => 'PROGRAM',
             str_starts_with($type, 'message.') => 'INBOX',
             str_starts_with($type, 'account.') => 'ACCOUNT',

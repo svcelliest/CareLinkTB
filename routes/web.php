@@ -97,6 +97,7 @@ Route::middleware(['auth', 'active', 'role:rhu'])->group(function () {
 
     Route::get('rhu/sms-log', [RhuSmsLogController::class, 'index'])->name('rhu.sms.index');
     Route::post('rhu/sms-log', [RhuSmsLogController::class, 'store'])->name('rhu.sms.store');
+    Route::post('rhu/sms-log/bhws', [RhuSmsLogController::class, 'storeBhw'])->name('rhu.sms.bhws.store');
 
     Route::get('rhu/inbox', [MessageController::class, 'index'])->name('rhu.inbox');
     Route::get('rhu/activity', [ActivityController::class, 'index'])->name('rhu.activity');

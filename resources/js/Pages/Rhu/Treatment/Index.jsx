@@ -17,6 +17,7 @@ import {
     controlClass,
     cx,
     readOnlyControlClass,
+    selectClass,
 } from "@/Components/ui";
 import { FormSection, StatCard } from "@/Components/rhu";
 
@@ -153,7 +154,7 @@ export default function Index({ cases, filters, stats, enrollment, municipality 
                                 <tr>
                                     {[
                                         "Patient Name",
-                                        "TB Case No.",
+                                        "TB Registry No.",
                                         "Status / Outcome",
                                         "Last Updated",
                                     ].map((heading) => (
@@ -256,8 +257,10 @@ export default function Index({ cases, filters, stats, enrollment, municipality 
 function EnrollModal({ open, onClose, enrollment, municipality }) {
     // Registration date and the assigned provider are shown, not posted: the
     // server dates the registration itself and assigns the signed-in RHU.
+    // The TB registry number is typed — it comes from the paper register.
     const form = useForm({
         patient_id: "",
+        case_number: "",
         registration_group: "",
         regimen: "",
         treatment_start_date: today(),
@@ -294,7 +297,8 @@ function EnrollModal({ open, onClose, enrollment, municipality }) {
             onClose={close}
             labelledBy="enroll-title"
             locked={form.processing}
-            className="max-w-[820px] p-0"
+            flush
+            className="max-w-[820px]"
         >
             <form onSubmit={submit}>
                 <header className="flex items-start justify-between gap-4 border-b border-[#e5e7eb] px-6 py-5">
@@ -332,7 +336,7 @@ function EnrollModal({ open, onClose, enrollment, municipality }) {
                             >
                                 <select
                                     id="enroll-patient"
-                                    className={controlClass}
+                                    className={selectClass}
                                     value={form.data.patient_id}
                                     disabled={enrollment.candidates.length === 0}
                                     onChange={(event) =>
@@ -342,22 +346,33 @@ function EnrollModal({ open, onClose, enrollment, municipality }) {
                                     <option value="">— Select patient —</option>
                                     {enrollment.candidates.map((candidate) => (
                                         <option key={candidate.id} value={candidate.id}>
-                                            {candidate.name} · {candidate.patient_code}
+                                            {candidate.name}
                                         </option>
                                     ))}
                                 </select>
                             </Field>
 
-                            <ReadOnlyField
-                                label="TB Case Number"
+                            <Field
+                                label="TB Registry Number"
+                                htmlFor="enroll-registry-no"
                                 className="sm:col-span-2"
-                                value={
-                                    selected
-                                        ? enrollment.next_case_number
-                                        : "Generated on enrollment"
-                                }
-                                emphasis
-                            />
+                                required
+                                error={form.errors.case_number}
+                                hint="Copy the number assigned in the TB register."
+                            >
+                                <input
+                                    id="enroll-registry-no"
+                                    type="text"
+                                    maxLength={20}
+                                    autoComplete="off"
+                                    className={controlClass}
+                                    placeholder="Enter TB Registry Number"
+                                    value={form.data.case_number}
+                                    onChange={(event) =>
+                                        form.setData("case_number", event.target.value)
+                                    }
+                                />
+                            </Field>
                             <ReadOnlyField label="Patient Name" value={readOnly(selected?.name)} />
                             <ReadOnlyField label="Birthday" value={readOnly(selected?.birthday)} />
                             <ReadOnlyField
@@ -445,7 +460,7 @@ function EnrollModal({ open, onClose, enrollment, municipality }) {
                             >
                                 <select
                                     id="enroll-regimen"
-                                    className={controlClass}
+                                    className={selectClass}
                                     value={form.data.regimen}
                                     onChange={(event) => form.setData("regimen", event.target.value)}
                                 >
@@ -466,7 +481,7 @@ function EnrollModal({ open, onClose, enrollment, municipality }) {
                             >
                                 <select
                                     id="enroll-group"
-                                    className={controlClass}
+                                    className={selectClass}
                                     value={form.data.registration_group}
                                     onChange={(event) =>
                                         form.setData("registration_group", event.target.value)
@@ -556,18 +571,11 @@ function EnrollModal({ open, onClose, enrollment, municipality }) {
  * is re-read server-side at save time, so this is a display row rather than a
  * disabled input that could be re-enabled from the console.
  */
-function ReadOnlyField({ label, value, className = "", emphasis = false }) {
+function ReadOnlyField({ label, value, className = "" }) {
     return (
         <div className={cx("mb-0", className)}>
             <span className="mb-1.5 block text-[11.5px] font-bold text-[#555]">{label}</span>
-            <p
-                className={cx(
-                    readOnlyControlClass,
-                    emphasis ? "font-bold text-brand" : "text-muted",
-                )}
-            >
-                {value}
-            </p>
+            <p className={cx(readOnlyControlClass, "text-muted")}>{value}</p>
         </div>
     );
 }

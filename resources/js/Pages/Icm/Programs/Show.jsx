@@ -44,6 +44,7 @@ const tbDiagnoses = [
     { value: "bc_ds_tb", label: "DSTB BC" },
     { value: "cd_ds_tb", label: "DSTB CD" },
     { value: "rr_tb", label: "RRTB BC" },
+    { value: "rr_dstb", label: "RR DSTB" },
     { value: "none", label: "No TB" },
 ];
 

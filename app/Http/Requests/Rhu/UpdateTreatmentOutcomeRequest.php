@@ -27,6 +27,19 @@ class UpdateTreatmentOutcomeRequest extends FormRequest
         return [
             'outcome' => ['required', Rule::in(TreatmentCase::OUTCOMES)],
             'outcome_date' => ['required', 'date'],
+            // Only Died and Lost to Follow Up carry a reason — the form shows
+            // the field for those two alone, and the controller stores null
+            // for every other outcome whatever the browser sends.
+            'outcome_reason' => [
+                Rule::requiredIf(fn () => in_array(
+                    $this->input('outcome'),
+                    TreatmentCase::OUTCOMES_WITH_REASON,
+                    true,
+                )),
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'outcome_remarks' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -35,6 +48,7 @@ class UpdateTreatmentOutcomeRequest extends FormRequest
     {
         return [
             'outcome_date' => 'outcome date',
+            'outcome_reason' => 'reason',
             'outcome_remarks' => 'remarks',
         ];
     }

@@ -80,6 +80,7 @@ class RhuPortalTest extends TestCase
         $this->actingAs($rhu)
             ->post(route('rhu.treatment.store'), [
                 'patient_id' => $patient->id,
+                'case_number' => 'TB-'.$patient->id,
                 'baseline_weight' => 52,
                 'registration_group' => 'New',
                 'regimen' => TreatmentCase::REGIMENS[0],
@@ -513,14 +514,15 @@ class RhuPortalTest extends TestCase
 
     /* ── Treatment enrolment ───────────────────────────────────────────── */
 
-    public function test_enrolling_a_diagnosed_patient_opens_a_numbered_case(): void
+    public function test_enrolling_a_diagnosed_patient_opens_a_case_under_the_typed_registry_number(): void
     {
         $rhu = $this->rhu();
         $patient = $this->diagnosedPatient($this->program());
 
-        $case = $this->enroll($rhu, $patient);
+        $case = $this->enroll($rhu, $patient, ['case_number' => '  TB-2026-017 ']);
 
-        $this->assertSame('TB-'.now()->format('Y').'-001', $case->case_number);
+        // Stored as typed, trimmed — never generated.
+        $this->assertSame('TB-2026-017', $case->case_number);
         $this->assertSame('Banga', $case->municipality);
         $this->assertSame('RHU Banga', $case->treatment_facility);
         $this->assertNull($case->outcome);
@@ -537,23 +539,39 @@ class RhuPortalTest extends TestCase
         ]);
     }
 
-    public function test_case_numbers_increment_and_are_never_reused(): void
+    public function test_the_registry_number_is_required_and_never_reused(): void
     {
         $rhu = $this->rhu();
         $program = $this->program();
-        $year = now()->format('Y');
 
-        $first = $this->enroll($rhu, $this->diagnosedPatient($program));
-        $second = $this->enroll($rhu, $this->diagnosedPatient($program));
+        $first = $this->enroll($rhu, $this->diagnosedPatient($program), ['case_number' => 'TB-2026-001']);
 
-        $this->assertSame("TB-{$year}-001", $first->case_number);
-        $this->assertSame("TB-{$year}-002", $second->case_number);
+        $payload = fn (Patient $patient, string $number) => [
+            'patient_id' => $patient->id,
+            'case_number' => $number,
+            'baseline_weight' => 52,
+            'registration_group' => 'New',
+            'regimen' => TreatmentCase::REGIMENS[0],
+            'treatment_start_date' => now()->toDateString(),
+        ];
 
-        // Deleting the highest must not hand its number out again.
-        $second->delete();
-        $third = $this->enroll($rhu, $this->diagnosedPatient($program));
+        // Blank is refused: the number is typed, not generated.
+        $this->actingAs($rhu)
+            ->post(route('rhu.treatment.store'), $payload($this->diagnosedPatient($program), ''))
+            ->assertSessionHasErrors('case_number');
 
-        $this->assertSame("TB-{$year}-003", $third->case_number);
+        // A number already in the register is refused.
+        $this->actingAs($rhu)
+            ->post(route('rhu.treatment.store'), $payload($this->diagnosedPatient($program), 'TB-2026-001'))
+            ->assertSessionHasErrors('case_number');
+
+        // Deleting a case must not free its number.
+        $first->delete();
+        $this->actingAs($rhu)
+            ->post(route('rhu.treatment.store'), $payload($this->diagnosedPatient($program), 'TB-2026-001'))
+            ->assertSessionHasErrors('case_number');
+
+        $this->assertDatabaseCount('treatment_cases', 1);
     }
 
     public function test_an_undiagnosed_patient_cannot_be_enrolled(): void
@@ -564,6 +582,7 @@ class RhuPortalTest extends TestCase
         $this->actingAs($rhu)
             ->post(route('rhu.treatment.store'), [
                 'patient_id' => $patient->id,
+                'case_number' => 'TB-'.$patient->id,
                 'baseline_weight' => 52,
                 'registration_group' => 'New',
                 'regimen' => TreatmentCase::REGIMENS[0],
@@ -584,6 +603,8 @@ class RhuPortalTest extends TestCase
         $this->actingAs($rhu)
             ->post(route('rhu.treatment.store'), [
                 'patient_id' => $patient->id,
+                // A fresh number, so the refusal is about the patient, not the number.
+                'case_number' => 'TB-'.$patient->id.'-B',
                 'baseline_weight' => 52,
                 'registration_group' => 'New',
                 'regimen' => TreatmentCase::REGIMENS[0],
@@ -602,6 +623,7 @@ class RhuPortalTest extends TestCase
         $this->actingAs($rhu)
             ->post(route('rhu.treatment.store'), [
                 'patient_id' => $patient->id,
+                'case_number' => 'TB-'.$patient->id,
                 'baseline_weight' => 52,
                 'registration_group' => 'New',
                 'regimen' => TreatmentCase::REGIMENS[0],
@@ -618,6 +640,7 @@ class RhuPortalTest extends TestCase
         $this->actingAs($rhu)
             ->post(route('rhu.treatment.store'), [
                 'patient_id' => $patient->id,
+                'case_number' => 'TB-'.$patient->id,
                 'baseline_weight' => 52,
                 'registration_group' => 'New',
                 'regimen' => TreatmentCase::REGIMENS[0],
@@ -746,6 +769,51 @@ class RhuPortalTest extends TestCase
             ->assertSessionHasErrors('outcome');
 
         $this->assertSame('Treatment Completed', $case->fresh()->outcome);
+    }
+
+    public function test_died_and_lost_to_follow_up_require_a_reason(): void
+    {
+        $rhu = $this->rhu();
+        $program = $this->program();
+
+        foreach (['Died', 'Lost to Follow Up'] as $outcome) {
+            $case = $this->enroll($rhu, $this->diagnosedPatient($program));
+
+            $this->actingAs($rhu)
+                ->patch(route('rhu.treatment.outcome.update', $case), [
+                    'outcome' => $outcome,
+                    'outcome_date' => now()->toDateString(),
+                ])
+                ->assertSessionHasErrors('outcome_reason');
+
+            $this->assertNull($case->fresh()->outcome);
+
+            $this->actingAs($rhu)
+                ->patch(route('rhu.treatment.outcome.update', $case), [
+                    'outcome' => $outcome,
+                    'outcome_date' => now()->toDateString(),
+                    'outcome_reason' => 'Transferred out of the province.',
+                ])
+                ->assertSessionHasNoErrors();
+
+            $case->refresh();
+            $this->assertSame($outcome, $case->outcome);
+            $this->assertSame('Transferred out of the province.', $case->outcome_reason);
+        }
+
+        // Any other outcome stores no reason, even if one was sent.
+        $case = $this->enroll($rhu, $this->diagnosedPatient($program));
+
+        $this->actingAs($rhu)
+            ->patch(route('rhu.treatment.outcome.update', $case), [
+                'outcome' => 'Cured',
+                'outcome_date' => now()->toDateString(),
+                'outcome_reason' => 'Should be dropped.',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Cured', $case->fresh()->outcome);
+        $this->assertNull($case->fresh()->outcome_reason);
     }
 
     /* ── Medication dispensing ─────────────────────────────────────────── */

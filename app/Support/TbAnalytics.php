@@ -26,12 +26,13 @@ use Illuminate\Support\Collection;
 class TbAnalytics
 {
     /** `tb_case_classification` values that mean a confirmed TB case. */
-    private const CONFIRMED_DIAGNOSES = ['bc_ds_tb', 'cd_ds_tb', 'rr_tb'];
+    private const CONFIRMED_DIAGNOSES = ['bc_ds_tb', 'cd_ds_tb', 'rr_tb', 'rr_dstb'];
 
     private const DIAGNOSIS_LABELS = [
         'bc_ds_tb' => 'DSTB BC',
         'cd_ds_tb' => 'DSTB CD',
         'rr_tb' => 'RRTB BC',
+        'rr_dstb' => 'RR DSTB',
         'none' => 'No TB',
     ];
 

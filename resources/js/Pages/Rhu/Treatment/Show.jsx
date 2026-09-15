@@ -114,20 +114,20 @@ export default function Show({
                 </Link>
 
                 <Card className="mb-[18px] flex flex-wrap items-center justify-between gap-5 border border-[#e5e7eb] p-5">
-                    <div className="flex items-center gap-3.5">
+                    <div className="flex min-w-0 items-center gap-3.5">
                         <div
                             className="grid size-[52px] place-items-center rounded-xl bg-brand-soft font-extrabold text-brand"
                             aria-hidden="true"
                         >
                             {initials(record.patient.name)}
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-[#1f2937]">
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-bold break-words text-[#1f2937]">
                                 {record.patient.name}
                             </h2>
                             <div className="mt-1 flex flex-wrap items-center gap-2.5">
                                 <span className="text-[11.5px] font-semibold text-[#6b7280]">
-                                    Case No. {record.case_number}
+                                    TB Registry No. {record.case_number}
                                 </span>
                                 <StatusPill tone={closed ? "completed" : "active"}>
                                     {closed ? record.status_label : "On Treatment"}
@@ -332,7 +332,7 @@ function Overview({ record }) {
                         value: record.patient.age ? `${record.patient.age} years old` : "—",
                     },
                     { label: "Enrolled / Screened As", value: record.enrolled_as ?? "—" },
-                    { label: "TB Case Number", value: record.case_number },
+                    { label: "TB Registry Number", value: record.case_number },
                     { label: "Treatment Facility", value: record.treatment_facility },
                     { label: "Diagnosing Facility", value: record.diagnostic_facility },
                     { label: "Registration Group", value: record.registration_group },
@@ -346,6 +346,9 @@ function Overview({ record }) {
                     { label: "Enrolled By", value: record.enrolled_by },
                     { label: "Overall Adherence", value: `${record.adherence}%` },
                     { label: "Outcome", value: record.status_label },
+                    record.outcome_reason
+                        ? { label: "Outcome Reason", value: record.outcome_reason }
+                        : null,
                 ]}
             />
         </FormSection>
@@ -513,7 +516,8 @@ function MonthlyTab({
                         open={dispensing !== null}
                         onClose={() => setDispensing(null)}
                         labelledBy="dispensing-title"
-                        className="max-w-[820px] p-0"
+                        flush
+                        className="max-w-[820px]"
                     >
                         {dispensing !== null ? (
                             <DispensingForm
@@ -1057,8 +1061,6 @@ function DispensingForm({ record, data, month, editingId, readOnly = false, opti
         dispensed_on: existing?.dispensed_on ?? defaults.suggested_date,
         remaining_tablets: existing?.remaining_tablets ?? "",
         doses_taken: existing?.doses_taken ?? "",
-        missed_reason: existing?.missed_reason ?? "",
-        missed_intervention: existing?.missed_intervention ?? "",
         side_effects: existing?.side_effects ?? [],
         remarks: existing?.remarks ?? "",
     });
@@ -1283,42 +1285,6 @@ function DispensingForm({ record, data, month, editingId, readOnly = false, opti
                     </Alert>
                 ) : null}
 
-                {missed > 0 ? (
-                    <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                        <Field
-                            label="Reason for Missed Doses"
-                            htmlFor="pk-reason"
-                            error={form.errors.missed_reason}
-                        >
-                            <input
-                                id="pk-reason"
-                                className={controlClass}
-                                disabled={readOnly}
-                                value={form.data.missed_reason}
-                                onChange={(event) =>
-                                    form.setData("missed_reason", event.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field
-                            label="Intervention"
-                            htmlFor="pk-intervention"
-                            error={form.errors.missed_intervention}
-                        >
-                            <input
-                                id="pk-intervention"
-                                className={controlClass}
-                                disabled={readOnly}
-                                placeholder="Counseling"
-                                value={form.data.missed_intervention}
-                                onChange={(event) =>
-                                    form.setData("missed_intervention", event.target.value)
-                                }
-                            />
-                        </Field>
-                    </div>
-                ) : null}
-
                 <div className="mt-4">
                     <Field label="Remarks" htmlFor="pk-remarks" error={form.errors.remarks}>
                         <textarea
@@ -1439,7 +1405,8 @@ function FollowupTab({ record, followups, schedule, options, closed }) {
                 open={recording !== null}
                 onClose={() => setRecording(null)}
                 labelledBy="followup-title"
-                className="max-w-[720px] p-0"
+                flush
+                className="max-w-[720px]"
             >
                 {recording ? (
                     <FollowupForm
@@ -1855,8 +1822,20 @@ function OutcomeTab({ record, options, closed }) {
     const form = useForm({
         outcome: closed ? (record.status_label ?? "") : "",
         outcome_date: record.outcome_date_value ?? today(),
+        outcome_reason: record.outcome_reason ?? "",
         outcome_remarks: record.outcome_remarks ?? "",
     });
+
+    // Only Died and Lost to Follow Up ask for a reason. The field appears for
+    // those alone; the server stores null for every other outcome.
+    const needsReason = options.outcomes_with_reason.includes(form.data.outcome);
+
+    // A closed case keeps its outcome even if that value has since left the
+    // list, so it still reads back rather than showing a blank select.
+    const outcomes =
+        closed && form.data.outcome && !options.outcomes.includes(form.data.outcome)
+            ? [form.data.outcome, ...options.outcomes]
+            : options.outcomes;
 
     const submit = (event) => {
         event.preventDefault();
@@ -1868,7 +1847,9 @@ function OutcomeTab({ record, options, closed }) {
             {closed ? (
                 <Alert tone="success">
                     Treatment Outcome: <b>{String(record.status_label).toUpperCase()}</b> ·{" "}
-                    {record.outcome_date} · Record Status: CLOSED
+                    {record.outcome_date}
+                    {record.outcome_reason ? ` · Reason: ${record.outcome_reason}` : ""} ·
+                    Record Status: CLOSED
                 </Alert>
             ) : (
                 <Alert tone="neutral">
@@ -1889,7 +1870,7 @@ function OutcomeTab({ record, options, closed }) {
                             onChange={(event) => form.setData("outcome", event.target.value)}
                         >
                             <option value="">Select outcome</option>
-                            {options.outcomes.map((outcome) => (
+                            {outcomes.map((outcome) => (
                                 <option key={outcome} value={outcome}>
                                     {outcome}
                                 </option>
@@ -1911,6 +1892,32 @@ function OutcomeTab({ record, options, closed }) {
                             onChange={(event) => form.setData("outcome_date", event.target.value)}
                         />
                     </Field>
+
+                    {needsReason ? (
+                        <Field
+                            label="Reason"
+                            htmlFor="outcome-reason"
+                            required
+                            error={form.errors.outcome_reason}
+                            hint={
+                                form.data.outcome === "Died"
+                                    ? "Cause or circumstances of death."
+                                    : "Why the patient was lost to follow-up."
+                            }
+                        >
+                            <input
+                                id="outcome-reason"
+                                type="text"
+                                maxLength={255}
+                                className={controlClass}
+                                disabled={closed}
+                                value={form.data.outcome_reason}
+                                onChange={(event) =>
+                                    form.setData("outcome_reason", event.target.value)
+                                }
+                            />
+                        </Field>
+                    ) : null}
 
                     <Field label="Recorded By" htmlFor="outcome-recorded-by">
                         <input

@@ -40,25 +40,46 @@ class TreatmentCase extends Model
         'Treatment After Failure',
         'Treatment After Loss to Follow-up',
         'Transfer-in',
+        'Previous Treatment Outcome Unknown',
     ];
 
+    /**
+     * The regimens offered at enrolment. A case enrolled under an earlier
+     * list keeps the regimen it was enrolled with; this only governs what may
+     * be chosen from now on.
+     */
     public const REGIMENS = [
-        'Standard Drug-Susceptible TB Regimen (2 HRZE / 4 HR)',
-        'Drug-Resistant TB Regimen',
+        '2HRZE / 4HR',
+        '2HRZES / 1HRZE / 5HRE',
+        '2HRZE / 10HR',
+        '2HRZES / 1HRZE / 9HRE',
     ];
 
     /**
      * The allowed treatment outcomes. Closing a case is the only thing that
      * writes `outcome`, so this list is also the definition of "closed".
      *
-     * The RHU records the outcome as a plain pass/fail result for the
-     * treatment record — nothing finer. Cases closed under the earlier, longer
-     * list keep whatever outcome they were closed with; this only governs
-     * what may be chosen from now on.
+     * Cases closed under an earlier list keep whatever outcome they were
+     * closed with; this only governs what may be chosen from now on.
      */
     public const OUTCOMES = [
+        'Cured',
         'Treatment Completed',
+        'Died',
         'Treatment Failed',
+        'Lost to Follow Up',
+        'Not Evaluated',
+        'Excluded from COHORT',
+    ];
+
+    /**
+     * The outcomes that must be closed with a reason. The outcome form shows
+     * its Reason field only for these and the request requires it only for
+     * these; every other outcome stores no reason.
+     */
+    public const OUTCOMES_WITH_REASON = [
+        'Died',
+        'Lost to Follow Up',
     ];
 
     /** Weekly dispensing returns that make up one treatment month. */
@@ -80,6 +101,7 @@ class TreatmentCase extends Model
         'enrolled_as',
         'outcome',
         'outcome_date',
+        'outcome_reason',
         'outcome_remarks',
         'closed_at',
     ];
@@ -327,38 +349,6 @@ class TreatmentCase extends Model
         return $municipality === null
             ? $query->whereRaw('1 = 0')
             : $query->where('municipality', $municipality);
-    }
-
-    /**
-     * The next register number, in the `TB-YYYY-NNN` convention the TB
-     * register already uses.
-     *
-     * Called inside the enrolment transaction with `$lock` set, so two
-     * simultaneous enrolments cannot be handed the same number; the unique
-     * index on `case_number` is the backstop.
-     *
-     * The scan runs over trashed rows too and takes the highest ever issued
-     * rather than a count, so neither deleting a case nor closing one can
-     * cause a number to be handed out a second time.
-     *
-     * `$lock` is false for the preview the enrolment form shows before submit:
-     * that read happens outside a transaction, where `SELECT … FOR UPDATE`
-     * would take a MySQL row lock for no benefit. The preview is advisory —
-     * the number actually stored is taken again, locked, at save time.
-     */
-    public static function allocateCaseNumber(?int $year = null, bool $lock = false): string
-    {
-        $year ??= (int) now()->format('Y');
-        $prefix = "TB-{$year}-";
-
-        $highest = static::withTrashed()
-            ->where('case_number', 'like', $prefix.'%')
-            ->when($lock, fn ($query) => $query->lockForUpdate())
-            ->pluck('case_number')
-            ->map(static fn (string $number): int => (int) substr($number, strlen($prefix)))
-            ->max() ?? 0;
-
-        return $prefix.str_pad((string) ($highest + 1), 3, '0', STR_PAD_LEFT);
     }
 
 }

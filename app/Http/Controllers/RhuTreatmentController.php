@@ -97,7 +97,6 @@ class RhuTreatmentController extends Controller
                 'assigned_provider' => $user->name,
                 'treatment_facility' => RhuScope::facility($user),
                 'diagnostic_facility' => RhuScope::facility($user),
-                'next_case_number' => TreatmentCase::allocateCaseNumber(),
             ],
             'municipality' => RhuScope::municipality($user),
         ]);
@@ -140,6 +139,7 @@ class RhuTreatmentController extends Controller
                 'enrolled_by' => $case->enroller?->name,
                 'outcome_date' => $case->outcome_date?->format('M j, Y'),
                 'outcome_date_value' => $case->outcome_date?->toDateString(),
+                'outcome_reason' => $case->outcome_reason,
                 'outcome_remarks' => $case->outcome_remarks,
                 'baseline_weight' => $case->baseline_weight,
                 'enrolled_as' => $case->enrolled_as,
@@ -233,6 +233,7 @@ class RhuTreatmentController extends Controller
                 'smear_results' => TreatmentFollowup::SMEAR_RESULTS,
                 'severities' => TreatmentDispensingRecord::SEVERITIES,
                 'outcomes' => TreatmentCase::OUTCOMES,
+                'outcomes_with_reason' => TreatmentCase::OUTCOMES_WITH_REASON,
                 'intensive_months' => TreatmentCase::INTENSIVE_MONTHS,
                 'total_months' => TreatmentCase::TOTAL_MONTHS,
                 'regimen_intensive' => TreatmentCase::REGIMEN_INTENSIVE,
@@ -325,9 +326,11 @@ class RhuTreatmentController extends Controller
      * Enrol a diagnosed patient and open their treatment case.
      *
      * Everything that identifies the patient is taken from the patient record,
-     * never from the request: the browser sends only the five editable fields
-     * plus the patient id, and even that id is re-checked against the RHU's
-     * catchment and against the diagnosis before a case is opened.
+     * never from the request: the browser sends only the editable fields —
+     * the TB registry number the RHU copies from the paper register, the
+     * regimen, group, start date and weight — plus the patient id, and even
+     * that id is re-checked against the RHU's catchment and against the
+     * diagnosis before a case is opened.
      */
     public function store(StoreTreatmentEnrollmentRequest $request): RedirectResponse
     {
@@ -366,8 +369,9 @@ class RhuTreatmentController extends Controller
             $case = TreatmentCase::create([
                 'patient_id' => $patient->id,
                 'enrolled_by' => $user->id,
-                // Allocated inside this transaction with the sequence locked.
-                'case_number' => TreatmentCase::allocateCaseNumber(lock: true),
+                // Typed by the RHU from the TB register; the request checks it
+                // is unique and the unique index is the backstop.
+                'case_number' => $request->validated('case_number'),
                 'municipality' => AklanAddresses::municipalityFromAddress($patient->address),
                 'registration_date' => now()->toDateString(),
                 'registration_group' => $request->validated('registration_group'),
@@ -463,7 +467,7 @@ class RhuTreatmentController extends Controller
 
         return redirect()
             ->route('rhu.treatment.show', $case)
-            ->with('success', "Patient successfully enrolled. TB Case Number: {$case->case_number}");
+            ->with('success', "Patient successfully enrolled. TB Registry Number: {$case->case_number}");
     }
 
     /**
@@ -639,8 +643,6 @@ class RhuTreatmentController extends Controller
                 'remaining_tablets' => $validated['remaining_tablets'] ?? null,
                 'doses_taken' => $taken,
                 'doses_missed' => max(0, $scheduled - $taken),
-                'missed_reason' => $validated['missed_reason'] ?? null,
-                'missed_intervention' => $validated['missed_intervention'] ?? null,
                 'side_effects' => $validated['side_effects'] ?? [],
                 'side_effect_severity' => $validated['side_effect_severity'] ?? null,
                 'side_effect_action' => $validated['side_effect_action'] ?? null,
@@ -825,6 +827,11 @@ class RhuTreatmentController extends Controller
             $locked->update([
                 'outcome' => $outcome,
                 'outcome_date' => $request->validated('outcome_date'),
+                // Kept only for the outcomes that ask for one, so a reason
+                // typed before the outcome was changed cannot linger.
+                'outcome_reason' => in_array($outcome, TreatmentCase::OUTCOMES_WITH_REASON, true)
+                    ? $request->validated('outcome_reason')
+                    : null,
                 'outcome_remarks' => $request->validated('outcome_remarks'),
                 'closed_at' => now(),
             ]);
@@ -862,7 +869,6 @@ class RhuTreatmentController extends Controller
             ->map(fn (Patient $patient) => [
                 'id' => $patient->id,
                 'name' => $patient->name,
-                'patient_code' => $patient->patient_code ?? ('P'.str_pad((string) $patient->id, 4, '0', STR_PAD_LEFT)),
                 'birthday' => $this->birthdayLabel($patient),
                 'address' => $patient->address,
                 'tb_diagnosis' => $patient->tbDiagnosisLabel(),

@@ -19,13 +19,14 @@ class Patient extends Model
      * Same list TbAnalytics uses, so the RHU's enrolment gate and the ICM's
      * analytics agree on what "diagnosed" means.
      */
-    public const CONFIRMED_DIAGNOSES = ['bc_ds_tb', 'cd_ds_tb', 'rr_tb'];
+    public const CONFIRMED_DIAGNOSES = ['bc_ds_tb', 'cd_ds_tb', 'rr_tb', 'rr_dstb'];
 
     /** Labels for the stored TB diagnosis codes, as the ICM table shows them. */
     public const DIAGNOSIS_LABELS = [
         'bc_ds_tb' => 'DSTB BC',
         'cd_ds_tb' => 'DSTB CD',
         'rr_tb' => 'RRTB BC',
+        'rr_dstb' => 'RR DSTB',
         'none' => 'No TB',
     ];
 
@@ -175,7 +176,7 @@ class Patient extends Model
             return 'Clinically Diagnosed';
         }
 
-        if (in_array($classification, ['bc_ds_tb', 'rr_tb'], true)
+        if (in_array($classification, ['bc_ds_tb', 'rr_tb', 'rr_dstb'], true)
             || $this->response('diagnostic_result') === 'positive') {
             return 'Bacteriologically Confirmed';
         }

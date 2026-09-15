@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Bhw;
 use App\Models\Patient;
 use App\Models\Program;
 use App\Models\TreatmentCase;
@@ -117,6 +118,28 @@ class RhuScope
     public static function treatmentCases(User $user): Builder
     {
         return TreatmentCase::query()->whereMunicipality(self::municipality($user));
+    }
+
+    /**
+     * BHW contacts kept for this RHU's municipality. A contact carries the
+     * municipality name outright, so no address parsing is involved.
+     */
+    public static function bhws(User $user): Builder
+    {
+        $municipality = self::municipality($user);
+
+        if ($municipality === null) {
+            return Bhw::query()->whereRaw('1 = 0');
+        }
+
+        return Bhw::query()->where('municipality', $municipality);
+    }
+
+    public static function coversBhw(User $user, Bhw $bhw): bool
+    {
+        $municipality = self::municipality($user);
+
+        return $municipality !== null && $bhw->municipality === $municipality;
     }
 
     public static function coversTreatmentCase(User $user, TreatmentCase $case): bool

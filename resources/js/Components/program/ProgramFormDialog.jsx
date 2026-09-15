@@ -171,42 +171,53 @@ export default function ProgramFormDialog({
             locked={processing}
             labelledBy="program-dialog-title"
             describedBy="program-dialog-description"
-            className="relative max-w-[520px]"
+            className="max-w-[520px]"
         >
-            {/* Sits over the form rather than replacing it, so the entered
-                values are still there behind the question — and still there
-                afterwards if the answer is Cancel. */}
-            {confirmingDiscard ? (
-                <div
-                    role="alertdialog"
-                    aria-modal="true"
-                    aria-labelledby="program-discard-title"
-                    className="absolute inset-0 z-10 flex flex-col justify-center rounded-2xl bg-white/97 p-7"
+            {/* Asked in its own dialog, stacked over the form rather than
+                painted across it: the form stays exactly as typed underneath
+                — and is still there if the answer is Cancel — while the
+                question gets the same card, backdrop, sizing and buttons as
+                every other confirmation in the portal. */}
+            <Modal
+                open={confirmingDiscard}
+                onClose={() => setConfirmingDiscard(false)}
+                labelledBy="program-discard-title"
+                describedBy="program-discard-description"
+                className="max-w-[440px]"
+            >
+                <h2
+                    id="program-discard-title"
+                    className="mb-1 text-[17px] font-bold text-ink"
                 >
-                    <h3
-                        id="program-discard-title"
-                        className="mb-1 text-[15.5px] font-bold text-ink"
+                    {isEdit ? "Discard Changes" : "Discard Program"}
+                </h2>
+                <p
+                    id="program-discard-description"
+                    className="mb-5 text-[13px] text-muted"
+                >
+                    {isEdit ? (
+                        <>
+                            The changes you made to{" "}
+                            <span className="font-semibold text-ink">{program.name}</span>{" "}
+                            have not been saved yet. Discarding them will keep the program as
+                            it was.
+                        </>
+                    ) : (
+                        "This program has not been created yet. The details you entered will be lost."
+                    )}
+                </p>
+                <div className="mt-1.5 flex flex-wrap justify-end gap-2.5">
+                    <Button
+                        variant="secondary"
+                        onClick={() => setConfirmingDiscard(false)}
                     >
-                        {isEdit ? "Discard changes?" : "Discard this program?"}
-                    </h3>
-                    <p className="mb-5 text-[13px] text-muted">
-                        {isEdit
-                            ? "The changes you made to this program have not been saved yet."
-                            : "This program has not been created yet. The details you entered will be lost."}
-                    </p>
-                    <div className="flex justify-end gap-2.5">
-                        <Button
-                            variant="secondary"
-                            onClick={() => setConfirmingDiscard(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button variant="danger" onClick={discardAndClose}>
-                            {isEdit ? "Discard Changes" : "Discard"}
-                        </Button>
-                    </div>
+                        Keep Editing
+                    </Button>
+                    <Button variant="danger" onClick={discardAndClose}>
+                        {isEdit ? "Discard Changes" : "Discard Program"}
+                    </Button>
                 </div>
-            ) : null}
+            </Modal>
 
             <h2
                 id="program-dialog-title"

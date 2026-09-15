@@ -71,6 +71,7 @@ class IcmContactTracingTest extends TestCase
         $this->actingAs($rhu)
             ->post(route('rhu.treatment.store'), [
                 'patient_id' => $patient->id,
+                'case_number' => 'TB-'.$patient->id,
                 'baseline_weight' => 52,
                 'registration_group' => 'New',
                 'regimen' => TreatmentCase::REGIMENS[0],
@@ -174,7 +175,8 @@ class IcmContactTracingTest extends TestCase
                 ->where('cases.0.tracing.visit_type', 'Home Visit')
                 ->where('cases.1.has_tracing', false)
                 ->where('cases.1.tracing.enumerator', '')
-                ->where('options.visit_types', ['Call', 'Home Visit']));
+                // Read-only: no option lists reach the register.
+                ->missing('options'));
     }
 
     public function test_the_patient_view_shows_the_summary_and_the_filed_report(): void

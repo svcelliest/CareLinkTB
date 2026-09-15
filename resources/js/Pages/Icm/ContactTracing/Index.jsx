@@ -6,8 +6,6 @@ import DashboardLayout from "@/Layouts/DashboardLayout";
 import { Card, actionButtonClass, cx } from "@/Components/ui";
 import {
     TableToolbar,
-    registerInputClass,
-    registerSelectClass,
     tableCellClass,
     tableGroupHeadClass,
     tableHeadClass,
@@ -18,18 +16,19 @@ import {
  *
  * One row per patient currently under treatment (the existing open-case
  * scope, so completed and closed cases drop off on their own), with every
- * answer of the RHU's contact tracing form as a column. The row is drawn with
- * the form's own controls so the coordinator reads exactly what the RHU
- * recorded, but nothing here writes: the RHU files the form from Patient
- * Monitoring, and this screen monitors it.
+ * answer of the RHU's contact tracing form as a column. Every answer is
+ * printed as plain text — no input, select or checkbox anywhere in the row —
+ * because nothing here writes: the RHU files the form from Patient
+ * Monitoring, and this screen only monitors it.
  *
  * The toolbar and register cells are the RHU Patient Tracker's primitives,
  * reused rather than restyled.
  */
 
 /**
- * The register's columns, in the order the ACF form asks them. `kind` picks
- * the control a cell is drawn with; `options` names the select's list.
+ * The register's columns, in the order the ACF form asks them. `kind` says
+ * how a value is read for display (dates are reformatted; everything else is
+ * printed as recorded).
  */
 const groups = [
     {
@@ -49,10 +48,10 @@ const groups = [
         title: "2. Patient Follow-up",
         columns: [
             { key: "visit_date", label: "Date of Call or Home Visit", kind: "date", width: 140 },
-            { key: "visit_type", label: "Call or Home Visit?", kind: "select", options: "visit_types", width: 140 },
-            { key: "rhu_contacted", label: "1. Has the RHU/CHO contacted you?", kind: "select", options: "yes_no", width: 150 },
-            { key: "started_medication", label: "Have you started medication?", kind: "select", options: "yes_no", width: 150 },
-            { key: "accompaniment", label: "2. Do you have accompaniment to the RHU?", kind: "select", options: "yes_no", width: 160 },
+            { key: "visit_type", label: "Call or Home Visit?", kind: "select", width: 140 },
+            { key: "rhu_contacted", label: "1. Has the RHU/CHO contacted you?", kind: "select", width: 150 },
+            { key: "started_medication", label: "Have you started medication?", kind: "select", width: 150 },
+            { key: "accompaniment", label: "2. Do you have accompaniment to the RHU?", kind: "select", width: 160 },
         ],
     },
     {
@@ -61,8 +60,8 @@ const groups = [
             { key: "household_total", label: "3. How many people live in your household?", kind: "number", width: 150 },
             { key: "household_symptoms", label: "4. How many HH members have symptoms?", kind: "number", width: 150 },
             { key: "household_tb", label: "5. How many HH members have TB?", kind: "number", width: 150 },
-            { key: "household_taking_meds", label: "If have, are they taking TB medication?", kind: "select", options: "taking_meds", width: 160 },
-            { key: "referral_cards", label: "6. Were referral cards given?", kind: "select", options: "yes_no", width: 140 },
+            { key: "household_taking_meds", label: "If have, are they taking TB medication?", kind: "select", width: 160 },
+            { key: "referral_cards", label: "6. Were referral cards given?", kind: "select", width: 140 },
             { key: "tpt_total", label: "7. If already, how many HH members enrolled in preventive therapy (TPT)?", kind: "number", width: 190 },
         ],
     },
@@ -72,7 +71,7 @@ const groups = [
             { key: "tpt_0_to_4", label: "# enrolled in TPT, 0 to 4 years old", kind: "number", width: 150 },
             { key: "tpt_5_to_14", label: "# enrolled in TPT, 5 to 14 years old", kind: "number", width: 150 },
             { key: "tpt_15_plus", label: "# enrolled in TPT, 15 years old and above", kind: "number", width: 160 },
-            { key: "tpt_reason", label: "Reason why HH members not enrolled for TPT", kind: "select", options: "tpt_reasons", width: 200 },
+            { key: "tpt_reason", label: "Reason why HH members not enrolled for TPT", kind: "select", width: 200 },
             { key: "enumerator", label: "Enumerator Name", kind: "text", width: 170 },
         ],
     },
@@ -101,15 +100,21 @@ function download(filename, csv) {
 const cellValue = (row, column) =>
     column.kind === "name" ? row.patient_name : (row.tracing[column.key] ?? "");
 
-// Read-only, but drawn as the form's controls and in black: a greyed value is
-// harder to read, not more honest.
-const readOnlyInputClass = cx(
-    registerInputClass,
-    "min-w-0 text-ink disabled:text-ink disabled:opacity-100",
-);
-const readOnlySelectClass = cx(registerSelectClass, "w-full text-ink disabled:text-ink disabled:opacity-100");
+/**
+ * A recorded ISO date as the rest of the portal prints one ("Sep 14, 2026").
+ * Anything that is not a plain `YYYY-MM-DD` is shown as recorded.
+ */
+function dateLabel(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return value;
 
-export default function Index({ cases, filters, stats, options }) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString(
+        "en-US",
+        { month: "short", day: "numeric", year: "numeric" },
+    );
+}
+
+export default function Index({ cases, filters, stats }) {
     const [search, setSearch] = useState(filters.search ?? "");
 
     const visit = () =>
@@ -123,7 +128,7 @@ export default function Index({ cases, filters, stats, options }) {
         download(
             "contact-tracing-register.csv",
             toCsv([
-                ["No.", "TB Case No.", ...columns.map((column) => column.label)],
+                ["No.", "TB Registry No.", ...columns.map((column) => column.label)],
                 ...cases.map((row) => [
                     row.number,
                     row.case_number,
@@ -180,9 +185,12 @@ export default function Index({ cases, filters, stats, options }) {
                     </TableToolbar>
 
                     {/* The wrap is the scroller, so the two header rows stay
-                        put while the register scrolls under them. */}
+                        put while the register scrolls under them. Separate
+                        borders, not collapsed: Chrome and Edge drop collapsed
+                        cell borders from a sticky header, so its rule would
+                        scroll away with the rows. */}
                     <div className="min-h-0 flex-1 overflow-auto">
-                        <table className="w-full border-collapse text-xs whitespace-nowrap">
+                        <table className="w-full border-separate border-spacing-0 text-xs whitespace-nowrap">
                             <thead className="sticky top-0 z-[2]">
                                 <tr>
                                     <th
@@ -233,11 +241,7 @@ export default function Index({ cases, filters, stats, options }) {
                                             </td>
                                             {columns.map((column) => (
                                                 <td key={column.key} className={tableCellClass}>
-                                                    <RegisterCell
-                                                        row={row}
-                                                        column={column}
-                                                        options={options}
-                                                    />
+                                                    <RegisterCell row={row} column={column} />
                                                 </td>
                                             ))}
                                         </tr>
@@ -252,66 +256,55 @@ export default function Index({ cases, filters, stats, options }) {
     );
 }
 
-/** One register cell, drawn with the control the ACF form uses for it. */
-function RegisterCell({ row, column, options }) {
+/**
+ * One register cell: the recorded answer as plain text, or a dash.
+ *
+ * Free text (a name, an address) wraps inside its own column width instead of
+ * stretching the register wider; dates, counts and chosen answers are short
+ * and stay on one line.
+ */
+function RegisterCell({ row, column }) {
     const value = cellValue(row, column);
-    const label = `${column.label}: ${row.patient_name}`;
+    const wrapStyle = { maxWidth: column.width - 24 };
 
     if (column.kind === "name") {
         return (
-            <span className="block text-left text-[12px] font-semibold text-ink">
+            <span
+                className="block text-left text-[12px] font-semibold break-words whitespace-normal text-ink"
+                style={wrapStyle}
+            >
                 {value}
             </span>
         );
     }
 
-    // Free-text answers (registry number, phone, address, …) read as plain
-    // text, like the name; only dated, counted and chosen answers keep the
-    // form's control so the recorded option is unmistakable.
-    if (column.kind === "text" && value !== "") {
-        return <span className="text-[12px] text-ink">{value}</span>;
-    }
-
-    // Nothing filed yet: a dash, not an empty box — the coordinator cannot
-    // type into it, so a blank control only invites the attempt.
+    // Nothing filed yet: a dash, never an empty box — there is nothing here
+    // for the coordinator to type into.
     if (value === "") {
         return (
-            <span className="text-[#bbb]" aria-label={`${label} (not recorded)`}>
+            <span
+                className="text-[#bbb]"
+                aria-label={`${column.label}: ${row.patient_name} (not recorded)`}
+            >
                 —
             </span>
         );
     }
 
-    if (column.kind === "select") {
+    if (column.kind === "text") {
         return (
-            <select
-                aria-label={label}
-                className={readOnlySelectClass}
-                value={value}
-                disabled
+            <span
+                className="mx-auto block text-[12px] break-words whitespace-normal text-ink"
+                style={wrapStyle}
             >
-                {options[column.options].map((option) => (
-                    <option key={option} value={option}>
-                        {option}
-                    </option>
-                ))}
-                {/* An answer outside today's list still shows as recorded. */}
-                {!options[column.options].includes(value) ? (
-                    <option value={value}>{value}</option>
-                ) : null}
-            </select>
+                {value}
+            </span>
         );
     }
 
     return (
-        <input
-            aria-label={label}
-            type={column.kind === "date" ? "date" : column.kind === "number" ? "number" : "text"}
-            className={readOnlyInputClass}
-            style={{ width: column.width - 24 }}
-            value={value}
-            disabled
-            readOnly
-        />
+        <span className="text-[12px] text-ink">
+            {column.kind === "date" ? dateLabel(value) : value}
+        </span>
     );
 }
